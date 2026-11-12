@@ -1,0 +1,348 @@
+import { useRef, useState } from "react";
+import { SubscriptionForm } from "./SubscriptionForm";
+import {
+  currencies,
+  createDemoSubscriptions,
+  daysBetween,
+  formatDate,
+  formatMoney,
+  monthlyTotal,
+  todayInManila,
+  upcomingCharges,
+  type Currency,
+  type Subscription,
+  type SubscriptionStatus,
+} from "./subscriptions";
+
+type Filter = "all" | SubscriptionStatus;
+
+export function App() {
+  const [today] = useState(() => todayInManila());
+  const [subscriptions, setSubscriptions] = useState(() =>
+    createDemoSubscriptions(today),
+  );
+  const [currency, setCurrency] = useState<Currency>("PHP");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [notice, setNotice] = useState("");
+  const addButton = useRef<HTMLButtonElement>(null);
+  const monthly = monthlyTotal(subscriptions, currency);
+  const upcoming = upcomingCharges(subscriptions, currency, today);
+  const visible = subscriptions.filter(
+    (item) =>
+      (filter === "all" || item.status === filter) &&
+      item.name.toLowerCase().includes(search.toLowerCase()),
+  );
+  const activeCount = subscriptions.filter(
+    (item) => item.status === "active",
+  ).length;
+  const trialCount = subscriptions.filter(
+    (item) => item.status === "trial",
+  ).length;
+
+  function closeForm() {
+    setShowForm(false);
+    addButton.current?.focus();
+  }
+
+  function addSubscription(subscription: Subscription) {
+    setSubscriptions((items) => [...items, subscription]);
+    closeForm();
+    setFilter("all");
+    setSearch("");
+    setNotice(`${subscription.name} added to this preview.`);
+  }
+
+  return (
+    <div className="app-shell">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+      <header className="topbar">
+        <a href="/" className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            r
+          </span>
+          renewal<span className="brand-dot">.</span>
+        </a>
+        <nav aria-label="Main navigation">
+          <a href="#main" className="nav-link active">
+            Overview
+          </a>
+          <a href="#subscriptions" className="nav-link">
+            Subscriptions
+          </a>
+        </nav>
+        <span className="preview-pill">
+          <span aria-hidden="true" />
+          Local preview
+        </span>
+      </header>
+
+      <main id="main" className="main-content">
+        <div className="page-heading">
+          <h1>Subscription overview</h1>
+          <button
+            ref={addButton}
+            className="primary-button"
+            aria-expanded={showForm}
+            onClick={() => (showForm ? closeForm() : setShowForm(true))}
+          >
+            <span aria-hidden="true">＋</span> Add subscription
+          </button>
+        </div>
+
+        <div className="demo-note">
+          <span className="note-symbol" aria-hidden="true">
+            i
+          </span>
+          <p>
+            <strong>Sample data.</strong> Changes reset when you reload.
+          </p>
+        </div>
+        <p className="sr-only" role="status">
+          {notice}
+        </p>
+
+        {showForm && (
+          <SubscriptionForm onSave={addSubscription} onCancel={closeForm} />
+        )}
+
+        <div className="summary-heading">
+          <h2>At a glance</h2>
+          <label className="currency-label">
+            Show totals in
+            <select
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value as Currency)}
+            >
+              {currencies.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <section className="stats-grid" aria-label="Subscription summary">
+          <article className="stat-card featured">
+            <p>Monthly equivalent</p>
+            <strong>{formatMoney(monthly, currency)}</strong>
+            <small>Active plans · yearly costs divided by 12</small>
+          </article>
+          <article className="stat-card">
+            <p>Next 30 days</p>
+            <strong>
+              {formatMoney(
+                upcoming.reduce((sum, item) => sum + item.amountMinor, 0),
+                currency,
+              )}
+            </strong>
+            <small>
+              {upcoming.length} scheduled charges · includes trial conversions
+            </small>
+          </article>
+          <article className="stat-card">
+            <p>Active subscriptions</p>
+            <strong>
+              {activeCount}
+              <span className="stat-unit"> plans</span>
+            </strong>
+            <small>Across all currencies · {trialCount} on trial</small>
+          </article>
+        </section>
+
+        <div className="content-grid">
+          <section
+            id="subscriptions"
+            className="panel subscription-panel"
+            aria-labelledby="subscriptions-heading"
+          >
+            <div className="section-heading">
+              <h2 id="subscriptions-heading">Your subscriptions</h2>
+              <span className="count-label">{subscriptions.length} total</span>
+            </div>
+            <div className="list-controls">
+              <div className="filters" aria-label="Filter subscriptions">
+                {(["all", "active", "trial", "cancelled"] as const).map(
+                  (value) => (
+                    <button
+                      key={value}
+                      aria-pressed={filter === value}
+                      className={filter === value ? "selected" : ""}
+                      onClick={() => setFilter(value)}
+                    >
+                      {value === "all"
+                        ? "All plans"
+                        : value === "trial"
+                          ? "Trials"
+                          : value.charAt(0).toUpperCase() + value.slice(1)}
+                    </button>
+                  ),
+                )}
+              </div>
+              <label className="search-label">
+                <span className="sr-only">Search subscriptions</span>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search plans…"
+                />
+              </label>
+            </div>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Service</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Next charge</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="service">
+                          <span
+                            className={`service-avatar ${item.category.toLowerCase()}`}
+                            aria-hidden="true"
+                          >
+                            {item.name.slice(0, 1)}
+                          </span>
+                          <div>
+                            <strong>{item.name}</strong>
+                            <small>{item.category}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <strong className="amount">
+                          {formatMoney(item.amountMinor, item.currency)}
+                        </strong>
+                        <small>
+                          per {item.cycle === "monthly" ? "month" : "year"}
+                        </small>
+                      </td>
+                      <td>
+                        <span className="charge-date">
+                          {formatDate(item.nextChargeDate)}
+                        </span>
+                        <small>
+                          {item.status === "trial"
+                            ? "Trial ends"
+                            : item.status === "cancelled"
+                              ? "Previous schedule"
+                              : "Estimated"}
+                        </small>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${item.status}`}>
+                          {item.status === "trial"
+                            ? "Trial"
+                            : item.status === "active"
+                              ? "Active"
+                              : "Cancelled"}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="row-button"
+                          aria-label={`${item.status === "cancelled" ? "Reactivate" : "Mark cancelled"} ${item.name}`}
+                          onClick={() => {
+                            const status =
+                              item.status === "cancelled"
+                                ? "active"
+                                : "cancelled";
+                            setSubscriptions((items) =>
+                              items.map((current) =>
+                                current.id === item.id
+                                  ? { ...current, status }
+                                  : current,
+                              ),
+                            );
+                            setNotice(
+                              `${item.name} marked ${status} in this preview.`,
+                            );
+                          }}
+                        >
+                          {item.status === "cancelled"
+                            ? "Reactivate"
+                            : "Mark cancelled"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {visible.length === 0 && (
+              <div className="empty-state">
+                <h3>No subscriptions here yet</h3>
+                <p>Try another filter or add a subscription.</p>
+              </div>
+            )}
+            <div className="table-footnote">
+              Amounts use each plan’s currency. Totals group matching
+              currencies.
+            </div>
+          </section>
+
+          <aside
+            className="panel upcoming-panel"
+            aria-labelledby="upcoming-heading"
+          >
+            <div className="section-heading">
+              <h2 id="upcoming-heading">Coming up</h2>
+              <span className="count-label">{currency}</span>
+            </div>
+            <div className="upcoming-list">
+              {upcoming.slice(0, 4).map((item) => (
+                <div className="upcoming-item" key={item.id}>
+                  <div className="date-tile">
+                    <span>
+                      {new Date(
+                        `${item.nextChargeDate}T00:00:00Z`,
+                      ).toLocaleDateString("en", {
+                        month: "short",
+                        timeZone: "UTC",
+                      })}
+                    </span>
+                    <strong>{item.nextChargeDate.slice(-2)}</strong>
+                  </div>
+                  <div className="upcoming-detail">
+                    <strong>{item.name}</strong>
+                    <small>
+                      {item.status === "trial"
+                        ? "Trial ends"
+                        : `${daysBetween(today, item.nextChargeDate)} days away`}
+                    </small>
+                  </div>
+                  <span className="upcoming-amount">
+                    {formatMoney(item.amountMinor, currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {upcoming.length === 0 && (
+              <p className="aside-empty">
+                No scheduled charges in {currency} in the next 30 days.
+              </p>
+            )}
+          </aside>
+        </div>
+        <footer className="page-footer">
+          <span>
+            renewal. <span className="footer-divider">/</span> Subscription
+            tracker
+          </span>
+          <span>Dates shown in Asia/Manila</span>
+        </footer>
+      </main>
+    </div>
+  );
+}
