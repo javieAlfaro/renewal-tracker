@@ -82,6 +82,7 @@ export class RenewalStack extends Stack {
       bundling: { minify: true, bundleAwsSDK: true },
     });
     table.grantReadData(handler);
+    table.grant(handler, "dynamodb:PutItem");
 
     const frontendOrigin =
       this.node.tryGetContext("frontendOrigin") ?? "http://127.0.0.1:5173";
@@ -90,7 +91,7 @@ export class RenewalStack extends Stack {
       corsPreflight: {
         allowOrigins: [frontendOrigin],
         allowHeaders: ["Authorization", "Content-Type"],
-        allowMethods: [CorsHttpMethod.GET],
+        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST],
       },
     });
     new HttpStage(this, "DefaultStage", {
@@ -101,7 +102,7 @@ export class RenewalStack extends Stack {
     });
     api.addRoutes({
       path: "/subscriptions",
-      methods: [HttpMethod.GET],
+      methods: [HttpMethod.GET, HttpMethod.POST],
       integration: new HttpLambdaIntegration("ListIntegration", handler),
       authorizer: new HttpUserPoolAuthorizer("UserAuthorizer", userPool, {
         userPoolClients: [userPoolClient],

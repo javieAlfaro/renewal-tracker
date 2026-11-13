@@ -24,7 +24,7 @@ src/
   subscriptions.ts          Model, date helpers, and calculations
   styles.css                 Responsive styles and Tailwind entry
 services/api/
-  subscriptions.ts          Authenticated DynamoDB read handler
+  subscriptions.ts          Authenticated DynamoDB list and create handler
 infrastructure/
   app.ts                     CDK entry point
   renewal-stack.ts           AWS resources and permissions
@@ -45,9 +45,11 @@ Synthesis generates a CloudFormation template in `cdk.out` locally. Deployment i
 
 The stack defines Cognito Lite with email verification, a public browser app client using SRP, a DynamoDB Standard table with 1 read and 1 write capacity unit, and an HTTP API with a Cognito JWT authorizer. `GET /subscriptions` queries only the authenticated user's partition. The response contains `subscriptions` and a nullable `nextCursor`. Pass the cursor as `?after=...` to fetch the next page. The route requires a Cognito access token with the `aws.cognito.signin.user.admin` scope.
 
-The Lambda role has read access to the table. API requests have a configured throttle, logs expire after seven days, and the table and user pool are retained when the stack is removed. Retained resources can continue to incur costs and require deliberate cleanup through AWS. CDK bootstrapping also creates deployment asset storage.
+`POST /subscriptions` requires the same Cognito access token and accepts a JSON body with `name`, `category`, `amountMinor`, `currency`, `cycle`, `nextChargeDate`, and `status`. Amounts are nonnegative integers in minor units. Supported currencies are PHP, USD, and EUR. Use `monthly` or `yearly` for the cycle, `active` or `trial` for the initial status, and `YYYY-MM-DD` for the next charge. The server assigns the subscription ID and uses the token subject for ownership. A successful write returns `201` with `{ "subscription": { ... } }`. Invalid input returns `400`.
 
-The browser currently uses sample data. Cloud sign-in, subscription writes, and email delivery are pending. The API is ready for connecting in the next milestone.
+The Lambda role has read and `PutItem` access to the table. API requests have a configured throttle, logs expire after seven days, and the table and user pool are retained when the stack is removed. Retained resources can continue to incur costs and require deliberate cleanup through AWS. CDK bootstrapping also creates deployment asset storage.
+
+The browser currently uses sample data. Cloud sign-in, connecting the dashboard to the API, and email delivery are pending.
 
 When deploying later, configure AWS credentials through your local AWS profile. Bootstrap the chosen account and region with the CDK CLI, then use the explicit deployment command with the frontend origin.
 
@@ -63,7 +65,7 @@ For Vercel, use the repository root, the Vite framework preset, `npm run build` 
 
 ## Next milestones
 
-1. Connect Cognito sign-in and the read API, then add validated create/edit/archive operations and owner-isolation checks.
+1. Connect Cognito sign-in and the list/create API, then add edit/archive operations and verify account isolation in AWS.
 2. Add recurrence rules, trials, cancellation deadlines, and CSV export/import.
 3. Add EventBridge Scheduler and SES daily reminder digests with delivery history and recovery from failed runs.
 4. Verify a deployed user flow, review actual AWS usage, and document the architecture for the portfolio.
