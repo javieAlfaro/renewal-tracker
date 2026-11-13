@@ -1,5 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { cloudSession, hasCloudConfig } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
+import type { NewSubscription } from "./subscriptions-api";
 import {
   currencies,
   createDemoSubscriptions,
@@ -17,14 +19,157 @@ import {
 type Filter = "all" | SubscriptionStatus;
 
 export function App() {
+  if (cloudSession) return <CloudDashboard session={cloudSession} />;
+  if (hasCloudConfig) {
+    return (
+      <CloudScreen
+        title="Cloud configuration incomplete"
+        message="Set all four public configuration values and reload."
+      />
+    );
+  }
+  return <Dashboard />;
+}
+
+function CloudScreen({
+  title,
+  message,
+  action,
+  secondary,
+}: {
+  title: string;
+  message: string;
+  action?: { label: string; run: () => void };
+  secondary?: { label: string; run: () => void };
+}) {
+  return (
+    <main className="main-content">
+      <section className="panel empty-state">
+        <h1>{title}</h1>
+        <p className="mb-4" role="status">
+          {message}
+        </p>
+        {action && (
+          <button className="primary-button" onClick={action.run}>
+            {action.label}
+          </button>
+        )}
+        {secondary && (
+          <button className="text-button ml-3" onClick={secondary.run}>
+            {secondary.label}
+          </button>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function CloudDashboard({
+  session,
+}: {
+  session: NonNullable<typeof cloudSession>;
+}) {
+  const [signedIn, setSignedIn] = useState<boolean>();
+  const [records, setRecords] = useState<Subscription[]>();
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const [redirecting, setRedirecting] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    void (async () => {
+      try {
+        const user = await session.initialize();
+        if (signal.aborted) return;
+        setSignedIn(Boolean(user));
+        if (!user) return;
+        const subscriptions = await session.api.list(signal);
+        if (!signal.aborted) setRecords(subscriptions);
+      } catch {
+        if (!signal.aborted) {
+          setError(
+            "Could not open your subscriptions. Try again or sign in again.",
+          );
+        }
+      }
+    })();
+    return () => controller.abort();
+  }, [session, attempt]);
+
+  function redirect(action: () => Promise<void>) {
+    setRedirecting(true);
+    setError("");
+    void action().catch(() => {
+      setRedirecting(false);
+      setError("Could not connect to sign-in. Please try again.");
+    });
+  }
+
+  if (redirecting)
+    return (
+      <CloudScreen title="Redirecting" message="Opening Amazon Cognito…" />
+    );
+  if (records)
+    return (
+      <Dashboard
+        cloud={{
+          records,
+          save: session.api.create,
+          signOut: () => redirect(session.signOut),
+        }}
+      />
+    );
+  if (signedIn && error) {
+    return (
+      <CloudScreen
+        title="Could not load subscriptions"
+        message={error}
+        action={{
+          label: "Try again",
+          run: () => {
+            setError("");
+            setAttempt((value) => value + 1);
+          },
+        }}
+        secondary={{ label: "Sign out", run: () => redirect(session.signOut) }}
+      />
+    );
+  }
+  if (signedIn === false || error) {
+    return (
+      <CloudScreen
+        title="Renewal Tracker"
+        message={error || "Sign in to view and manage your subscriptions."}
+        action={{ label: "Sign in", run: () => redirect(session.signIn) }}
+      />
+    );
+  }
+  return (
+    <CloudScreen
+      title="Renewal Tracker"
+      message="Loading your subscriptions…"
+    />
+  );
+}
+
+interface CloudDashboardData {
+  records: Subscription[];
+  save: (details: NewSubscription) => Promise<Subscription>;
+  signOut: () => void;
+}
+
+function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const [today] = useState(() => todayInManila());
-  const [subscriptions, setSubscriptions] = useState(() =>
-    createDemoSubscriptions(today),
+  const [subscriptions, setSubscriptions] = useState(
+    () => cloud?.records ?? createDemoSubscriptions(today),
   );
   const [currency, setCurrency] = useState<Currency>("PHP");
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
   const [notice, setNotice] = useState("");
   const addButton = useRef<HTMLButtonElement>(null);
   const monthly = monthlyTotal(subscriptions, currency);
@@ -46,12 +191,28 @@ export function App() {
     addButton.current?.focus();
   }
 
-  function addSubscription(subscription: Subscription) {
-    setSubscriptions((items) => [...items, subscription]);
-    closeForm();
-    setFilter("all");
-    setSearch("");
-    setNotice(`${subscription.name} added to this preview.`);
+  async function addSubscription(details: NewSubscription) {
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
+    setSaving(true);
+    try {
+      const subscription = cloud
+        ? await cloud.save(details)
+        : { ...details, id: crypto.randomUUID() };
+      setSubscriptions((items) => [...items, subscription]);
+      setFilter("all");
+      setSearch("");
+      setNotice(`${subscription.name} added.`);
+      setShowForm(false);
+    } finally {
+      saveInFlight.current = false;
+      setSaving(false);
+      // Wait until React re-enables the button before restoring focus.
+      requestAnimationFrame(() => {
+        if (!document.getElementById("form-heading"))
+          addButton.current?.focus();
+      });
+    }
   }
 
   return (
@@ -74,10 +235,20 @@ export function App() {
             Subscriptions
           </a>
         </nav>
-        <span className="preview-pill">
-          <span aria-hidden="true" />
-          Local preview
-        </span>
+        {cloud ? (
+          <button
+            className="preview-pill"
+            disabled={saving}
+            onClick={cloud.signOut}
+          >
+            Sign out
+          </button>
+        ) : (
+          <span className="preview-pill">
+            <span aria-hidden="true" />
+            Local preview
+          </span>
+        )}
       </header>
 
       <main id="main" className="main-content">
@@ -87,26 +258,34 @@ export function App() {
             ref={addButton}
             className="primary-button"
             aria-expanded={showForm}
+            disabled={saving}
             onClick={() => (showForm ? closeForm() : setShowForm(true))}
           >
             <span aria-hidden="true">＋</span> Add subscription
           </button>
         </div>
 
-        <div className="demo-note">
-          <span className="note-symbol" aria-hidden="true">
-            i
-          </span>
-          <p>
-            <strong>Sample data.</strong> Changes reset when you reload.
-          </p>
-        </div>
+        {!cloud && (
+          <div className="demo-note">
+            <span className="note-symbol" aria-hidden="true">
+              i
+            </span>
+            <p>
+              <strong>Sample data.</strong> Changes reset when you reload.
+            </p>
+          </div>
+        )}
         <p className="sr-only" role="status">
           {notice}
         </p>
 
         {showForm && (
-          <SubscriptionForm onSave={addSubscription} onCancel={closeForm} />
+          <SubscriptionForm
+            onSave={addSubscription}
+            onCancel={closeForm}
+            saving={saving}
+            demo={!cloud}
+          />
         )}
 
         <div className="summary-heading">
@@ -198,9 +377,11 @@ export function App() {
                     <th scope="col">Amount</th>
                     <th scope="col">Next charge</th>
                     <th scope="col">Status</th>
-                    <th scope="col">
-                      <span className="sr-only">Actions</span>
-                    </th>
+                    {!cloud && (
+                      <th scope="col">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -249,32 +430,34 @@ export function App() {
                               : "Cancelled"}
                         </span>
                       </td>
-                      <td>
-                        <button
-                          className="row-button"
-                          aria-label={`${item.status === "cancelled" ? "Reactivate" : "Mark cancelled"} ${item.name}`}
-                          onClick={() => {
-                            const status =
-                              item.status === "cancelled"
-                                ? "active"
-                                : "cancelled";
-                            setSubscriptions((items) =>
-                              items.map((current) =>
-                                current.id === item.id
-                                  ? { ...current, status }
-                                  : current,
-                              ),
-                            );
-                            setNotice(
-                              `${item.name} marked ${status} in this preview.`,
-                            );
-                          }}
-                        >
-                          {item.status === "cancelled"
-                            ? "Reactivate"
-                            : "Mark cancelled"}
-                        </button>
-                      </td>
+                      {!cloud && (
+                        <td>
+                          <button
+                            className="row-button"
+                            aria-label={`${item.status === "cancelled" ? "Reactivate" : "Mark cancelled"} ${item.name}`}
+                            onClick={() => {
+                              const status =
+                                item.status === "cancelled"
+                                  ? "active"
+                                  : "cancelled";
+                              setSubscriptions((items) =>
+                                items.map((current) =>
+                                  current.id === item.id
+                                    ? { ...current, status }
+                                    : current,
+                                ),
+                              );
+                              setNotice(
+                                `${item.name} marked ${status} in this preview.`,
+                              );
+                            }}
+                          >
+                            {item.status === "cancelled"
+                              ? "Reactivate"
+                              : "Mark cancelled"}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

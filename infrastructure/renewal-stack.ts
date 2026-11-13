@@ -16,6 +16,8 @@ import {
 import {
   AccountRecovery,
   FeaturePlan,
+  ManagedLoginVersion,
+  OAuthScope,
   UserPool,
 } from "aws-cdk-lib/aws-cognito";
 import {
@@ -59,11 +61,39 @@ export class RenewalStack extends Stack {
       },
       removalPolicy: RemovalPolicy.RETAIN,
     });
+    const frontendOrigin =
+      this.node.tryGetContext("frontendOrigin") ?? "http://localhost:5173";
+    const frontendUrl = new URL(frontendOrigin);
+    if (
+      frontendUrl.origin !== frontendOrigin ||
+      (frontendUrl.protocol !== "https:" &&
+        !(
+          frontendUrl.protocol === "http:" &&
+          frontendUrl.hostname === "localhost"
+        ))
+    ) {
+      throw new Error(
+        "frontendOrigin must be an HTTPS origin or http://localhost for development, without a trailing slash.",
+      );
+    }
+    const domain = userPool.addDomain("HostedLogin", {
+      cognitoDomain: {
+        domainPrefix:
+          this.node.tryGetContext("cognitoDomainPrefix") ??
+          `renewal-tracker-${this.account}`,
+      },
+      managedLoginVersion: ManagedLoginVersion.CLASSIC_HOSTED_UI,
+    });
     const userPoolClient = userPool.addClient("WebClient", {
       generateSecret: false,
-      authFlows: { userSrp: true },
       preventUserExistenceErrors: true,
       accessTokenValidity: Duration.hours(1),
+      oAuth: {
+        flows: { authorizationCodeGrant: true },
+        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.COGNITO_ADMIN],
+        callbackUrls: [`${frontendOrigin}/`],
+        logoutUrls: [`${frontendOrigin}/`],
+      },
     });
 
     const logs = new LogGroup(this, "ApiLogs", {
@@ -84,8 +114,6 @@ export class RenewalStack extends Stack {
     table.grantReadData(handler);
     table.grant(handler, "dynamodb:PutItem");
 
-    const frontendOrigin =
-      this.node.tryGetContext("frontendOrigin") ?? "http://127.0.0.1:5173";
     const api = new HttpApi(this, "Api", {
       createDefaultStage: false,
       corsPreflight: {
@@ -107,12 +135,16 @@ export class RenewalStack extends Stack {
       authorizer: new HttpUserPoolAuthorizer("UserAuthorizer", userPool, {
         userPoolClients: [userPoolClient],
       }),
-      // Cognito SRP access tokens include this scope. Requiring it excludes ID tokens.
+      // Require the scope issued to the browser's access token.
       authorizationScopes: ["aws.cognito.signin.user.admin"],
     });
 
     new CfnOutput(this, "ApiUrl", { value: api.apiEndpoint });
     new CfnOutput(this, "UserPoolId", { value: userPool.userPoolId });
+    new CfnOutput(this, "CognitoIssuer", {
+      value: userPool.userPoolProviderUrl,
+    });
+    new CfnOutput(this, "CognitoDomain", { value: domain.baseUrl() });
     new CfnOutput(this, "UserPoolClientId", {
       value: userPoolClient.userPoolClientId,
     });

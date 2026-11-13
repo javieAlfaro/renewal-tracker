@@ -2,22 +2,24 @@ import { useState, type FormEvent } from "react";
 import {
   currencies,
   todayInManila,
-  type Subscription,
   type Currency,
   type BillingCycle,
-  type SubscriptionStatus,
 } from "./subscriptions";
+import type { NewSubscription } from "./subscriptions-api";
 
 interface Props {
-  onSave: (subscription: Subscription) => void;
+  onSave: (subscription: NewSubscription) => Promise<void>;
   onCancel: () => void;
+  saving: boolean;
+  demo: boolean;
 }
 
-export function SubscriptionForm({ onSave, onCancel }: Props) {
+export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
   const [error, setError] = useState("");
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name")).trim();
     const amountMinor = Math.round(Number(data.get("amount")) * 100);
@@ -25,23 +27,36 @@ export function SubscriptionForm({ onSave, onCancel }: Props) {
       setError("Enter a name and a valid amount.");
       return;
     }
-    onSave({
-      id: crypto.randomUUID(),
-      name,
-      amountMinor,
-      currency: data.get("currency") as Currency,
-      cycle: data.get("cycle") as BillingCycle,
-      nextChargeDate: String(data.get("nextChargeDate")),
-      category: String(data.get("category")),
-      status: data.get("status") as SubscriptionStatus,
-    });
+    setError("");
+    try {
+      await onSave({
+        name,
+        amountMinor,
+        currency: data.get("currency") as Currency,
+        cycle: data.get("cycle") as BillingCycle,
+        nextChargeDate: String(data.get("nextChargeDate")),
+        category: String(data.get("category")),
+        status: data.get("status") === "trial" ? "trial" : "active",
+      });
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not save. Please try again.",
+      );
+    }
   }
 
   return (
     <section className="panel form-panel" aria-labelledby="form-heading">
       <div className="section-heading">
         <h2 id="form-heading">Add a subscription</h2>
-        <button className="text-button" type="button" onClick={onCancel}>
+        <button
+          className="text-button"
+          type="button"
+          disabled={saving}
+          onClick={onCancel}
+        >
           Cancel
         </button>
       </div>
@@ -113,8 +128,8 @@ export function SubscriptionForm({ onSave, onCancel }: Props) {
           </select>
         </label>
         <div className="form-submit">
-          <button className="primary-button" type="submit">
-            Add to preview
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? "Saving…" : demo ? "Add to preview" : "Save subscription"}
           </button>
         </div>
         {error && (
