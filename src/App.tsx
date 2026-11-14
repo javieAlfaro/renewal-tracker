@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cloudSession, hasCloudConfig } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
+import { subscriptionsCsv } from "./subscriptions-csv";
 import type { NewSubscription, SubscriptionDetails } from "./subscriptions-api";
 import {
   currencies,
@@ -194,6 +195,20 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     (formTrigger.current ?? addButton.current)?.focus();
   }
 
+  function downloadSubscriptions() {
+    const csv = new Blob([subscriptionsCsv(subscriptions)], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(csv);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `subscriptions-${todayInManila()}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   async function saveSubscription(details: SubscriptionDetails) {
     if (saveInFlight.current || !form) return;
     saveInFlight.current = true;
@@ -366,7 +381,20 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
           >
             <div className="section-heading">
               <h2 id="subscriptions-heading">Your subscriptions</h2>
-              <span className="count-label">{subscriptions.length} total</span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="count-label">
+                  {subscriptions.length} total
+                </span>
+                <button
+                  type="button"
+                  className="row-button disabled:opacity-50"
+                  aria-label="Export all subscriptions as CSV"
+                  disabled={subscriptions.length === 0 || saving}
+                  onClick={downloadSubscriptions}
+                >
+                  Export CSV
+                </button>
+              </div>
             </div>
             <div className="list-controls">
               <div className="filters" aria-label="Filter subscriptions">

@@ -15,6 +15,8 @@ Open `http://localhost:5173`. With no cloud configuration, the preview includes 
 
 Monthly equivalents include active plans. Upcoming payments use each plan's stored next charge within the next 30 calendar days, including estimated trial conversions. Repeated future billing occurrences and month-end recurrence rules are a later milestone. Dates use Asia/Manila and totals never combine currencies.
 
+Use **Export CSV** in the subscriptions list to download a copy of all loaded records, including cancelled plans. Search and status filters only affect the on-screen list. The export includes the amount in each plan's original currency.
+
 ## Project layout
 
 ```text
@@ -77,7 +79,7 @@ For Vercel, use the repository root, the Vite framework preset, `npm run build` 
 ## Next milestones
 
 1. Deploy the stack and verify sign-in, persistence, sign-out, and account isolation in AWS.
-2. Add recurrence rules, trials, cancellation deadlines, and CSV export/import.
+2. Add recurrence rules, trial cancellation deadlines, and CSV import.
 3. Add EventBridge Scheduler and SES daily reminder digests with delivery history and recovery from failed runs.
 4. Verify a deployed user flow, review actual AWS usage, and document the architecture for the portfolio.
 
