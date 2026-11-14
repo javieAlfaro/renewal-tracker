@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cloudSession, hasCloudConfig } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
-import type { NewSubscription } from "./subscriptions-api";
+import type { NewSubscription, SubscriptionDetails } from "./subscriptions-api";
 import {
   currencies,
   createDemoSubscriptions,
@@ -115,7 +115,8 @@ function CloudDashboard({
       <Dashboard
         cloud={{
           records,
-          save: session.api.create,
+          create: session.api.create,
+          update: session.api.update,
           signOut: () => redirect(session.signOut),
         }}
       />
@@ -155,7 +156,8 @@ function CloudDashboard({
 
 interface CloudDashboardData {
   records: Subscription[];
-  save: (details: NewSubscription) => Promise<Subscription>;
+  create: (details: NewSubscription) => Promise<Subscription>;
+  update: (id: string, details: SubscriptionDetails) => Promise<Subscription>;
   signOut: () => void;
 }
 
@@ -167,11 +169,12 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const [currency, setCurrency] = useState<Currency>("PHP");
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<"create" | Subscription | null>(null);
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
   const [notice, setNotice] = useState("");
   const addButton = useRef<HTMLButtonElement>(null);
+  const formTrigger = useRef<HTMLButtonElement>(null);
   const monthly = monthlyTotal(subscriptions, currency);
   const upcoming = upcomingCharges(subscriptions, currency, today);
   const visible = subscriptions.filter(
@@ -187,30 +190,46 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   ).length;
 
   function closeForm() {
-    setShowForm(false);
-    addButton.current?.focus();
+    setForm(null);
+    (formTrigger.current ?? addButton.current)?.focus();
   }
 
-  async function addSubscription(details: NewSubscription) {
-    if (saveInFlight.current) return;
+  async function saveSubscription(details: SubscriptionDetails) {
+    if (saveInFlight.current || !form) return;
     saveInFlight.current = true;
     setSaving(true);
     try {
-      const subscription = cloud
-        ? await cloud.save(details)
-        : { ...details, id: crypto.randomUUID() };
-      setSubscriptions((items) => [...items, subscription]);
-      setFilter("all");
-      setSearch("");
-      setNotice(`${subscription.name} added.`);
-      setShowForm(false);
+      if (form === "create") {
+        if (details.status === "cancelled")
+          throw new Error("Choose Active or Free trial.");
+        const subscription = cloud
+          ? await cloud.create({ ...details, status: details.status })
+          : { ...details, id: crypto.randomUUID() };
+        setSubscriptions((items) => [...items, subscription]);
+        setFilter("all");
+        setSearch("");
+        setNotice(`${subscription.name} added.`);
+      } else {
+        const subscription = cloud
+          ? await cloud.update(form.id, details)
+          : { ...details, id: form.id };
+        setSubscriptions((items) =>
+          items.map((item) =>
+            item.id === subscription.id ? subscription : item,
+          ),
+        );
+        setNotice(`${subscription.name} updated.`);
+      }
+      setForm(null);
     } finally {
       saveInFlight.current = false;
       setSaving(false);
       // Wait until React re-enables the button before restoring focus.
       requestAnimationFrame(() => {
-        if (!document.getElementById("form-heading"))
-          addButton.current?.focus();
+        if (!document.getElementById("form-heading")) {
+          const trigger = formTrigger.current;
+          (trigger?.isConnected ? trigger : addButton.current)?.focus();
+        }
       });
     }
   }
@@ -257,9 +276,16 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
           <button
             ref={addButton}
             className="primary-button"
-            aria-expanded={showForm}
+            aria-expanded={form === "create"}
             disabled={saving}
-            onClick={() => (showForm ? closeForm() : setShowForm(true))}
+            onClick={(event) => {
+              if (form === "create") {
+                closeForm();
+                return;
+              }
+              formTrigger.current = event.currentTarget;
+              setForm("create");
+            }}
           >
             <span aria-hidden="true">＋</span> Add subscription
           </button>
@@ -279,9 +305,11 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
           {notice}
         </p>
 
-        {showForm && (
+        {form && (
           <SubscriptionForm
-            onSave={addSubscription}
+            key={form === "create" ? "create" : form.id}
+            initial={form === "create" ? undefined : form}
+            onSave={saveSubscription}
             onCancel={closeForm}
             saving={saving}
             demo={!cloud}
@@ -377,11 +405,9 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                     <th scope="col">Amount</th>
                     <th scope="col">Next charge</th>
                     <th scope="col">Status</th>
-                    {!cloud && (
-                      <th scope="col">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    )}
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -430,34 +456,19 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                               : "Cancelled"}
                         </span>
                       </td>
-                      {!cloud && (
-                        <td>
-                          <button
-                            className="row-button"
-                            aria-label={`${item.status === "cancelled" ? "Reactivate" : "Mark cancelled"} ${item.name}`}
-                            onClick={() => {
-                              const status =
-                                item.status === "cancelled"
-                                  ? "active"
-                                  : "cancelled";
-                              setSubscriptions((items) =>
-                                items.map((current) =>
-                                  current.id === item.id
-                                    ? { ...current, status }
-                                    : current,
-                                ),
-                              );
-                              setNotice(
-                                `${item.name} marked ${status} in this preview.`,
-                              );
-                            }}
-                          >
-                            {item.status === "cancelled"
-                              ? "Reactivate"
-                              : "Mark cancelled"}
-                          </button>
-                        </td>
-                      )}
+                      <td>
+                        <button
+                          className="row-button"
+                          aria-label={`Edit ${item.name}`}
+                          disabled={saving}
+                          onClick={(event) => {
+                            formTrigger.current = event.currentTarget;
+                            setForm(item);
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

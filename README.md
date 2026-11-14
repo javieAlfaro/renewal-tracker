@@ -24,7 +24,7 @@ src/
   subscriptions.ts          Model, date helpers, and calculations
   styles.css                 Responsive styles and Tailwind entry
 services/api/
-  subscriptions.ts          Authenticated DynamoDB list and create handler
+  subscriptions.ts          Authenticated DynamoDB list, create, and update handler
 infrastructure/
   app.ts                     CDK entry point
   renewal-stack.ts           AWS resources and permissions
@@ -47,7 +47,9 @@ The stack defines Cognito Lite with email verification and the classic hosted UI
 
 `POST /subscriptions` requires the same Cognito access token and accepts a JSON body with `name`, `category`, `amountMinor`, `currency`, `cycle`, `nextChargeDate`, and `status`. Amounts are nonnegative integers in minor units. Supported currencies are PHP, USD, and EUR. Use `monthly` or `yearly` for the cycle, `active` or `trial` for the initial status, and `YYYY-MM-DD` for the next charge. The server assigns the subscription ID and uses the token subject for ownership. A successful write returns `201` with `{ "subscription": { ... } }`. Invalid input returns `400`.
 
-The Lambda role has read and `PutItem` access to the table. API requests have a configured throttle, logs expire after seven days, and the table and user pool are retained when the stack is removed. Retained resources can continue to incur costs and require deliberate cleanup through AWS. CDK bootstrapping also creates deployment asset storage.
+`PUT /subscriptions/{id}` updates an existing subscription using the same fields. It also accepts `cancelled` as a status. On success it returns `200` with the updated subscription. A missing record in the signed-in user's partition returns `404`.
+
+The Lambda role has read, `PutItem`, and `UpdateItem` access to the table. API requests have a configured throttle, logs expire after seven days, and the table and user pool are retained when the stack is removed. Retained resources can continue to incur costs and require deliberate cleanup through AWS. CDK bootstrapping also creates deployment asset storage.
 
 When deploying later, configure AWS credentials through your local AWS profile. Bootstrap the chosen account and region with the CDK CLI, then use the explicit deployment command with the frontend origin.
 
@@ -66,7 +68,7 @@ Copy [.env.example](.env.example) to `.env.local` for local testing or set these
 | `VITE_COGNITO_DOMAIN`    | `CognitoDomain`    |
 | `VITE_COGNITO_CLIENT_ID` | `UserPoolClientId` |
 
-Restart Vite or rebuild the Vercel site after setting the values. Cloud mode uses Cognito to sign in and stores the session in the current browser tab. After sign-in, add a subscription and reload to verify that it was saved to DynamoDB. The frontend only exposes list and create actions in cloud mode.
+Restart Vite or rebuild the Vercel site after setting the values. Cloud mode uses Cognito to sign in and stores the session in the current browser tab. After sign-in, add a subscription, edit its price or status, and reload to check that the changes were saved to DynamoDB.
 
 ## Frontend hosting
 
@@ -74,7 +76,7 @@ For Vercel, use the repository root, the Vite framework preset, `npm run build` 
 
 ## Next milestones
 
-1. Deploy the stack and verify sign-in, persistence, sign-out, and account isolation in AWS. Add edit and archive operations.
+1. Deploy the stack and verify sign-in, persistence, sign-out, and account isolation in AWS.
 2. Add recurrence rules, trials, cancellation deadlines, and CSV export/import.
 3. Add EventBridge Scheduler and SES daily reminder digests with delivery history and recovery from failed runs.
 4. Verify a deployed user flow, review actual AWS usage, and document the architecture for the portfolio.

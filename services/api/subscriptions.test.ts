@@ -4,6 +4,7 @@ import {
   DynamoDBDocumentClient,
   type PutCommand,
   type QueryCommand,
+  type UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { handler } from "./subscriptions";
@@ -145,5 +146,69 @@ it("rejects malformed bodies and invalid fields before writing", async (t) => {
   for (const body of invalid) {
     assert.equal((await handler(createEvent(body))).statusCode, 400, body);
   }
+  assert.equal(send.mock.callCount(), 0);
+});
+
+const savedId = "f2969cf0-1d80-4e59-a947-2cfa7c423373";
+
+function updateEvent(id = savedId) {
+  const event = createEvent(
+    JSON.stringify({
+      ...details,
+      status: "cancelled",
+      ownerId: "other-user",
+      id: "ignored",
+    }),
+  );
+  event.requestContext.http.method = "PUT";
+  event.pathParameters = { id };
+  return event;
+}
+
+it("updates the existing subscription in the token owner's partition", async (t) => {
+  let input: UpdateCommand["input"] | undefined;
+  t.mock.method(
+    DynamoDBDocumentClient.prototype,
+    "send",
+    async (command: UpdateCommand) => {
+      input = command.input;
+      return {};
+    },
+  );
+
+  const response = await handler(updateEvent());
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(input?.Key, { id: savedId, ownerId: "real-user" });
+  assert.equal(input?.ConditionExpression, "attribute_exists(id)");
+  assert.equal(input?.ExpressionAttributeValues?.[":status"], "cancelled");
+  assert.deepEqual(JSON.parse(response.body!), {
+    subscription: {
+      ...details,
+      name: "Sample Plan",
+      id: savedId,
+      status: "cancelled",
+    },
+  });
+});
+
+it("returns 404 if no matching record exists in the signed-in user's partition", async (t) => {
+  t.mock.method(DynamoDBDocumentClient.prototype, "send", async () => {
+    const error = new Error("No matching item");
+    error.name = "ConditionalCheckFailedException";
+    throw error;
+  });
+  assert.equal((await handler(updateEvent())).statusCode, 404);
+});
+
+it("rejects invalid IDs before updating DynamoDB", async (t) => {
+  const send = t.mock.method(
+    DynamoDBDocumentClient.prototype,
+    "send",
+    async () => {
+      throw new Error("Unexpected database call");
+    },
+  );
+  assert.equal((await handler(updateEvent("invalid"))).statusCode, 400);
   assert.equal(send.mock.callCount(), 0);
 });

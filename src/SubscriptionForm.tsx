@@ -4,18 +4,40 @@ import {
   todayInManila,
   type Currency,
   type BillingCycle,
+  type Subscription,
+  type SubscriptionStatus,
 } from "./subscriptions";
-import type { NewSubscription } from "./subscriptions-api";
+import type { SubscriptionDetails } from "./subscriptions-api";
+
+const categories = [
+  "Entertainment",
+  "Productivity",
+  "Design",
+  "Storage",
+  "Development",
+  "Other",
+];
 
 interface Props {
-  onSave: (subscription: NewSubscription) => Promise<void>;
+  initial?: Subscription;
+  onSave: (subscription: SubscriptionDetails) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
   demo: boolean;
 }
 
-export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
+export function SubscriptionForm({
+  initial,
+  onSave,
+  onCancel,
+  saving,
+  demo,
+}: Props) {
   const [error, setError] = useState("");
+  const categoryOptions =
+    initial && !categories.includes(initial.category)
+      ? [...categories, initial.category]
+      : categories;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,7 +58,7 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
         cycle: data.get("cycle") as BillingCycle,
         nextChargeDate: String(data.get("nextChargeDate")),
         category: String(data.get("category")),
-        status: data.get("status") === "trial" ? "trial" : "active",
+        status: data.get("status") as SubscriptionStatus,
       });
     } catch (error) {
       setError(
@@ -50,7 +72,9 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
   return (
     <section className="panel form-panel" aria-labelledby="form-heading">
       <div className="section-heading">
-        <h2 id="form-heading">Add a subscription</h2>
+        <h2 id="form-heading">
+          {initial ? `Edit ${initial.name}` : "Add a subscription"}
+        </h2>
         <button
           className="text-button"
           type="button"
@@ -65,6 +89,7 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
           Service name
           <input
             name="name"
+            defaultValue={initial?.name}
             maxLength={80}
             placeholder="e.g. YouTube Premium"
             required
@@ -73,19 +98,19 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
         </label>
         <label>
           Category
-          <select name="category">
-            <option>Entertainment</option>
-            <option>Productivity</option>
-            <option>Design</option>
-            <option>Storage</option>
-            <option>Development</option>
-            <option>Other</option>
+          <select name="category" defaultValue={initial?.category}>
+            {categoryOptions.map((category) => (
+              <option key={category}>{category}</option>
+            ))}
           </select>
         </label>
         <label>
           Amount per billing cycle
           <input
             name="amount"
+            defaultValue={
+              initial ? (initial.amountMinor / 100).toFixed(2) : undefined
+            }
             type="number"
             min="0"
             max="99999999"
@@ -96,7 +121,7 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
         </label>
         <label>
           Currency
-          <select name="currency">
+          <select name="currency" defaultValue={initial?.currency}>
             {currencies.map((currency) => (
               <option key={currency}>{currency}</option>
             ))}
@@ -104,7 +129,7 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
         </label>
         <label>
           Billing cycle
-          <select name="cycle">
+          <select name="cycle" defaultValue={initial?.cycle}>
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
           </select>
@@ -114,7 +139,7 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
           <input
             name="nextChargeDate"
             type="date"
-            defaultValue={todayInManila()}
+            defaultValue={initial?.nextChargeDate ?? todayInManila()}
             min="2000-01-01"
             max="2100-12-31"
             required
@@ -122,14 +147,21 @@ export function SubscriptionForm({ onSave, onCancel, saving, demo }: Props) {
         </label>
         <label>
           Status
-          <select name="status">
+          <select name="status" defaultValue={initial?.status}>
             <option value="active">Active</option>
             <option value="trial">Free trial</option>
+            {initial && <option value="cancelled">Cancelled</option>}
           </select>
         </label>
         <div className="form-submit">
           <button className="primary-button" type="submit" disabled={saving}>
-            {saving ? "Saving…" : demo ? "Add to preview" : "Save subscription"}
+            {saving
+              ? "Saving…"
+              : initial
+                ? "Save changes"
+                : demo
+                  ? "Add to preview"
+                  : "Save subscription"}
           </button>
         </div>
         {error && (

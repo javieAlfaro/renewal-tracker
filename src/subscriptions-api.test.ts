@@ -69,3 +69,27 @@ it("reports expired sessions without treating the request as a successful save",
   );
   await assert.rejects(api.create(details), /session has expired/);
 });
+
+it("sends edited details and cancellation status to the individual subscription endpoint", async (t) => {
+  const edited = {
+    ...record,
+    amountMinor: 17500,
+    status: "cancelled" as const,
+  };
+  const { id, ...changes } = edited;
+  t.mock.method(globalThis, "fetch", async (url: URL, options: RequestInit) => {
+    assert.equal(url.pathname, "/subscriptions/server-id");
+    assert.equal(options.method, "PUT");
+    assert.equal(
+      new Headers(options.headers).get("Authorization"),
+      "Bearer test-token",
+    );
+    assert.deepEqual(JSON.parse(String(options.body)), changes);
+    return Response.json({ subscription: edited });
+  });
+  const api = subscriptionApi(
+    "https://api.example.test",
+    async () => "test-token",
+  );
+  assert.deepEqual(await api.update(id, changes), edited);
+});

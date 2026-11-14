@@ -4,6 +4,7 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   QueryCommand,
+  UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type {
   APIGatewayProxyEventV2WithJWTAuthorizer,
@@ -67,7 +68,7 @@ function readSubscription(
     amountMinor > 9_999_999_900 ||
     !supportedCurrency ||
     (cycle !== "monthly" && cycle !== "yearly") ||
-    (status !== "active" && status !== "trial") ||
+    (status !== "active" && status !== "trial" && status !== "cancelled") ||
     typeof nextChargeDate !== "string" ||
     !/^\d{4}-\d{2}-\d{2}$/.test(nextChargeDate) ||
     nextChargeDate < "2000-01-01" ||
@@ -106,12 +107,48 @@ export async function handler(
     return json(500, { message: "Service configuration is incomplete." });
   }
 
-  const creating = event.requestContext.http.method === "POST";
+  const method = event.requestContext.http.method;
+  const updating = method === "PUT";
   try {
-    if (creating) {
+    if (method === "POST" || updating) {
       const fields = readSubscription(event);
-      if (!fields)
+      if (!fields || (!updating && fields.status === "cancelled"))
         return json(400, { message: "Enter valid subscription details." });
+
+      if (updating) {
+        const id = event.pathParameters?.id;
+        if (!id || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/.test(id)) {
+          return json(400, { message: "Enter a valid subscription ID." });
+        }
+        await database.send(
+          new UpdateCommand({
+            TableName: process.env.TABLE_NAME,
+            Key: { ownerId, id },
+            ConditionExpression: "attribute_exists(id)",
+            UpdateExpression:
+              "SET #name = :name, #category = :category, #amount = :amount, #currency = :currency, #cycle = :cycle, #date = :nextCharge, #status = :status",
+            ExpressionAttributeNames: {
+              "#name": "name",
+              "#category": "category",
+              "#amount": "amountMinor",
+              "#currency": "currency",
+              "#cycle": "cycle",
+              "#date": "nextChargeDate",
+              "#status": "status",
+            },
+            ExpressionAttributeValues: {
+              ":name": fields.name,
+              ":category": fields.category,
+              ":amount": fields.amountMinor,
+              ":currency": fields.currency,
+              ":cycle": fields.cycle,
+              ":nextCharge": fields.nextChargeDate,
+              ":status": fields.status,
+            },
+          }),
+        );
+        return json(200, { subscription: { ...fields, id } });
+      }
 
       const subscription: Subscription = { ...fields, id: randomUUID() };
       await database.send(
@@ -123,6 +160,8 @@ export async function handler(
       );
       return json(201, { subscription });
     }
+
+    if (method !== "GET") return json(405, { message: "Method not allowed." });
 
     const result = await database.send(
       new QueryCommand({
@@ -140,16 +179,21 @@ export async function handler(
       nextCursor: result.LastEvaluatedKey?.id ?? null,
     });
   } catch (error) {
+    const name = error instanceof Error ? error.name : "UnknownError";
+    if (updating && name === "ConditionalCheckFailedException") {
+      return json(404, { message: "Subscription not found." });
+    }
     console.error(
-      creating ? "Subscription write failed" : "Subscription query failed",
-      {
-        name: error instanceof Error ? error.name : "UnknownError",
-      },
+      method === "GET"
+        ? "Subscription query failed"
+        : "Subscription write failed",
+      { name },
     );
     return json(500, {
-      message: creating
-        ? "Unable to save the subscription."
-        : "Unable to load subscriptions. Please try again.",
+      message:
+        method === "GET"
+          ? "Unable to load subscriptions. Please try again."
+          : "Unable to save the subscription.",
     });
   }
 }

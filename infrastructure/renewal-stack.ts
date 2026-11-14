@@ -112,14 +112,18 @@ export class RenewalStack extends Stack {
       bundling: { minify: true, bundleAwsSDK: true },
     });
     table.grantReadData(handler);
-    table.grant(handler, "dynamodb:PutItem");
+    table.grant(handler, "dynamodb:PutItem", "dynamodb:UpdateItem");
 
     const api = new HttpApi(this, "Api", {
       createDefaultStage: false,
       corsPreflight: {
         allowOrigins: [frontendOrigin],
         allowHeaders: ["Authorization", "Content-Type"],
-        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST],
+        allowMethods: [
+          CorsHttpMethod.GET,
+          CorsHttpMethod.POST,
+          CorsHttpMethod.PUT,
+        ],
       },
     });
     new HttpStage(this, "DefaultStage", {
@@ -128,15 +132,23 @@ export class RenewalStack extends Stack {
       autoDeploy: true,
       throttle: { rateLimit: 5, burstLimit: 10 },
     });
-    api.addRoutes({
-      path: "/subscriptions",
-      methods: [HttpMethod.GET, HttpMethod.POST],
+    const subscriptionRoute = {
       integration: new HttpLambdaIntegration("ListIntegration", handler),
       authorizer: new HttpUserPoolAuthorizer("UserAuthorizer", userPool, {
         userPoolClients: [userPoolClient],
       }),
       // Require the scope issued to the browser's access token.
       authorizationScopes: ["aws.cognito.signin.user.admin"],
+    };
+    api.addRoutes({
+      ...subscriptionRoute,
+      path: "/subscriptions",
+      methods: [HttpMethod.GET, HttpMethod.POST],
+    });
+    api.addRoutes({
+      ...subscriptionRoute,
+      path: "/subscriptions/{id}",
+      methods: [HttpMethod.PUT],
     });
 
     new CfnOutput(this, "ApiUrl", { value: api.apiEndpoint });

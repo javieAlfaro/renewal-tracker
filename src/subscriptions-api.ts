@@ -1,6 +1,7 @@
 import type { Subscription } from "./subscriptions";
 
-export type NewSubscription = Omit<Subscription, "id" | "status"> & {
+export type SubscriptionDetails = Omit<Subscription, "id">;
+export type NewSubscription = SubscriptionDetails & {
   status: "active" | "trial";
 };
 
@@ -21,8 +22,31 @@ export function subscriptionApi(
     if (response.status === 401) {
       throw new Error("Your session has expired. Sign out and sign in again.");
     }
+    if (options.method === "PUT" && response.status === 404) {
+      throw new Error(
+        "This subscription is unavailable. Reload your list and try again.",
+      );
+    }
     if (!response.ok) throw new Error(message);
     return response;
+  }
+
+  async function save(
+    url: URL,
+    method: "POST" | "PUT",
+    details: SubscriptionDetails,
+  ): Promise<Subscription> {
+    const response = await request(
+      url,
+      {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(details),
+      },
+      "Could not save the subscription. Check your details and try again.",
+    );
+    const result: { subscription: Subscription } = await response.json();
+    return result.subscription;
   }
 
   return {
@@ -49,18 +73,16 @@ export function subscriptionApi(
       } while (true);
     },
 
-    async create(details: NewSubscription): Promise<Subscription> {
-      const response = await request(
-        endpoint,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(details),
-        },
-        "Could not save the subscription. Check your details and try again.",
+    create(details: NewSubscription) {
+      return save(endpoint, "POST", details);
+    },
+
+    update(id: string, details: SubscriptionDetails) {
+      return save(
+        new URL(`${endpoint.href}/${encodeURIComponent(id)}`),
+        "PUT",
+        details,
       );
-      const result: { subscription: Subscription } = await response.json();
-      return result.subscription;
     },
   };
 }
