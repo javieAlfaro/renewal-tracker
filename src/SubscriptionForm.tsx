@@ -34,6 +34,9 @@ export function SubscriptionForm({
   demo,
 }: Props) {
   const [error, setError] = useState("");
+  const [status, setStatus] = useState<SubscriptionStatus>(
+    initial?.status ?? "active",
+  );
   const categoryOptions =
     initial && !categories.includes(initial.category)
       ? [...categories, initial.category]
@@ -58,7 +61,7 @@ export function SubscriptionForm({
         cycle: data.get("cycle") as BillingCycle,
         nextChargeDate: String(data.get("nextChargeDate")),
         category: String(data.get("category")),
-        status: data.get("status") as SubscriptionStatus,
+        status,
       });
     } catch (error) {
       setError(
@@ -135,19 +138,34 @@ export function SubscriptionForm({
           </select>
         </label>
         <label>
-          Next charge / trial end
+          <span id="billing-date-label">
+            {status === "trial" ? "Trial end date" : "Billing date"}
+          </span>
           <input
             name="nextChargeDate"
             type="date"
+            aria-labelledby="billing-date-label"
+            aria-describedby="billing-date-hint"
             defaultValue={initial?.nextChargeDate ?? todayInManila()}
             min="2000-01-01"
             max="2100-12-31"
             required
           />
+          <small id="billing-date-hint">
+            {status === "trial"
+              ? "The estimated first charge if the trial converts."
+              : "Recurring estimates use this date as the start of the schedule."}
+          </small>
         </label>
         <label>
           Status
-          <select name="status" defaultValue={initial?.status}>
+          <select
+            name="status"
+            value={status}
+            onChange={(event) =>
+              setStatus(event.target.value as SubscriptionStatus)
+            }
+          >
             <option value="active">Active</option>
             <option value="trial">Free trial</option>
             {initial && <option value="cancelled">Cancelled</option>}
