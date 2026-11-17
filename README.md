@@ -53,13 +53,24 @@ The stack defines Cognito Lite with email verification and the classic hosted UI
 
 The Lambda role has read, `PutItem`, and `UpdateItem` access to the table. API requests have a configured throttle, logs expire after seven days, and the table and user pool are retained when the stack is removed. Retained resources can continue to incur costs and require deliberate cleanup through AWS. CDK bootstrapping also creates deployment asset storage.
 
-When deploying later, configure AWS credentials through your local AWS profile. Bootstrap the chosen account and region with the CDK CLI, then use the explicit deployment command with the frontend origin.
+## Deploy and verify
+
+Install the AWS CLI and configure a named profile with credentials and a default region. Replace `YOUR_PROFILE`, `ACCOUNT_ID`, and `REGION` using the profile and the values printed by these checks. Run `npm ci` from the repository root before using the CDK CLI.
 
 ```sh
-npm run infra:deploy -- -c frontendOrigin=https://YOUR-PROJECT.vercel.app
+aws sts get-caller-identity --profile YOUR_PROFILE --query Account --output text
+aws configure get region --profile YOUR_PROFILE
+npx cdk bootstrap aws://ACCOUNT_ID/REGION --profile YOUR_PROFILE
 ```
 
-The stack registers `frontendOrigin` for API CORS and uses its root URL for Cognito redirects. The default is `http://localhost:5173`, which can be used to test against AWS from Vite. Set `-c cognitoDomainPrefix=YOUR-UNIQUE-PREFIX` if the default Cognito domain prefix is unavailable in the chosen region.
+To verify with the local Vite app, leave the default frontend origin at `http://localhost:5173`.
+
+```sh
+npm run infra:diff -- --profile YOUR_PROFILE
+npm run infra:deploy -- --profile YOUR_PROFILE
+```
+
+For a Vercel deployment, pass `-c frontendOrigin=https://YOUR-PROJECT.vercel.app` to both CDK commands. Use the exact HTTPS origin without a trailing slash. The stack registers that origin for CORS and uses its root URL for Cognito redirects. Set `-c cognitoDomainPrefix=YOUR-UNIQUE-PREFIX` if the default Cognito domain prefix is unavailable in the chosen region. [AWS CDK bootstrap guide](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping-env.html)
 
 Copy [.env.example](.env.example) to `.env.local` for local testing or set these public values in Vercel for the deployed site.
 
@@ -70,7 +81,12 @@ Copy [.env.example](.env.example) to `.env.local` for local testing or set these
 | `VITE_COGNITO_DOMAIN`    | `CognitoDomain`    |
 | `VITE_COGNITO_CLIENT_ID` | `UserPoolClientId` |
 
-Restart Vite or rebuild the Vercel site after setting the values. Cloud mode uses Cognito to sign in and stores the session in the current browser tab. After sign-in, add a subscription, edit its price or status, and reload to check that the changes were saved to DynamoDB.
+Restart Vite or rebuild the Vercel site after setting the values. Cloud mode uses Cognito to sign in and stores the session in the current browser tab.
+
+1. Open the frontend at the configured origin. Sign up with a test email, verify it, and sign in.
+2. Add a subscription, edit its price, and reload. Confirm the edited price persists. Mark the subscription cancelled and check that it drops out of the forecast.
+3. Sign in as a second test account in a separate browser profile. Confirm the first account's subscription is absent.
+4. Sign out and confirm the dashboard returns to its sign-in screen. To verify the API separately, request `GET /subscriptions` on the `ApiUrl` without an access token and expect HTTP `401`.
 
 ## Frontend hosting
 
