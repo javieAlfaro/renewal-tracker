@@ -13,7 +13,7 @@ npm run dev
 
 Open `http://localhost:5173`. With no cloud configuration, the preview includes illustrative sample prices, currency-specific spending summaries, search, status filters, an add-subscription form, and local cancellation/reactivation. Preview changes reset on reload. Cancellation with the actual provider is a separate action.
 
-Monthly equivalents include active plans. Upcoming payments use each plan's stored next charge within the next 30 calendar days, including estimated trial conversions. Repeated future billing occurrences and month-end recurrence rules are a later milestone. Dates use Asia/Manila and totals never combine currencies.
+Monthly equivalents include active plans. The 30-day forecast projects active monthly and yearly charges from the saved billing date. If a month is shorter, the forecast uses its last day and returns to the original day when possible. Trials appear once at their saved end date if it falls inside the window. Forecast dates are estimates and leave saved records intact. Dates use Asia/Manila and totals never combine currencies.
 
 Use **Export CSV** in the subscriptions list to download a copy of all loaded records, including cancelled plans. Search and status filters only affect the on-screen list. The export includes the amount in each plan's original currency.
 
@@ -79,7 +79,7 @@ For Vercel, use the repository root, the Vite framework preset, `npm run build` 
 ## Next milestones
 
 1. Deploy the stack and verify sign-in, persistence, sign-out, and account isolation in AWS.
-2. Add recurrence rules, trial cancellation deadlines, and CSV import.
+2. Add trial cancellation deadlines and CSV import.
 3. Add EventBridge Scheduler and SES daily reminder digests with delivery history and recovery from failed runs.
 4. Verify a deployed user flow, review actual AWS usage, and document the architecture for the portfolio.
 

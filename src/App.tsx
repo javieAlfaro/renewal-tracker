@@ -355,12 +355,15 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
             <p>Next 30 days</p>
             <strong>
               {formatMoney(
-                upcoming.reduce((sum, item) => sum + item.amountMinor, 0),
+                upcoming.reduce(
+                  (sum, charge) => sum + charge.subscription.amountMinor,
+                  0,
+                ),
                 currency,
               )}
             </strong>
             <small>
-              {upcoming.length} scheduled charges · includes trial conversions
+              {upcoming.length} estimated charges · includes trial conversions
             </small>
           </article>
           <article className="stat-card">
@@ -431,7 +434,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                   <tr>
                     <th scope="col">Service</th>
                     <th scope="col">Amount</th>
-                    <th scope="col">Next charge</th>
+                    <th scope="col">Saved billing date</th>
                     <th scope="col">Status</th>
                     <th scope="col">
                       <span className="sr-only">Actions</span>
@@ -472,7 +475,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                             ? "Trial ends"
                             : item.status === "cancelled"
                               ? "Previous schedule"
-                              : "Estimated"}
+                              : "Schedule starts"}
                         </small>
                       </td>
                       <td>
@@ -523,25 +526,25 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
               <span className="count-label">{currency}</span>
             </div>
             <div className="upcoming-list">
-              {upcoming.slice(0, 4).map((item) => (
-                <div className="upcoming-item" key={item.id}>
+              {upcoming.slice(0, 4).map(({ subscription: item, date }) => (
+                <div className="upcoming-item" key={`${item.id}-${date}`}>
                   <div className="date-tile">
                     <span>
-                      {new Date(
-                        `${item.nextChargeDate}T00:00:00Z`,
-                      ).toLocaleDateString("en", {
+                      {new Date(`${date}T00:00:00Z`).toLocaleDateString("en", {
                         month: "short",
                         timeZone: "UTC",
                       })}
                     </span>
-                    <strong>{item.nextChargeDate.slice(-2)}</strong>
+                    <strong>{date.slice(-2)}</strong>
                   </div>
                   <div className="upcoming-detail">
                     <strong>{item.name}</strong>
                     <small>
                       {item.status === "trial"
                         ? "Trial ends"
-                        : `${daysBetween(today, item.nextChargeDate)} days away`}
+                        : date === today
+                          ? "Due today"
+                          : `${daysBetween(today, date)} days away`}
                     </small>
                   </div>
                   <span className="upcoming-amount">

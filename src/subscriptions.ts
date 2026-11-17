@@ -73,22 +73,64 @@ export function monthlyTotal(
   return Math.round(total);
 }
 
+function billingDate(anchor: Date, monthsAfterAnchor: number): string {
+  const month = anchor.getUTCMonth() + monthsAfterAnchor;
+  const year = anchor.getUTCFullYear();
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(anchor.getUTCDate(), lastDay);
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+}
+
+interface UpcomingCharge {
+  subscription: Subscription;
+  date: string;
+}
+
 export function upcomingCharges(
   subscriptions: Subscription[],
   currency: Currency,
   today: string,
-): Subscription[] {
-  return subscriptions
-    .filter((item) => {
-      const days = daysBetween(today, item.nextChargeDate);
-      return (
-        item.currency === currency &&
-        item.status !== "cancelled" &&
-        days >= 0 &&
-        days < 30
-      );
-    })
-    .sort((a, b) => a.nextChargeDate.localeCompare(b.nextChargeDate));
+): UpcomingCharge[] {
+  const charges: UpcomingCharge[] = [];
+  const end = addDays(today, 30);
+  const current = new Date(`${today}T00:00:00Z`);
+
+  for (const subscription of subscriptions) {
+    if (
+      subscription.currency !== currency ||
+      subscription.status === "cancelled"
+    )
+      continue;
+    const start = subscription.nextChargeDate;
+    if (start >= end) continue;
+
+    if (subscription.status === "trial") {
+      if (start >= today) charges.push({ subscription, date: start });
+      continue;
+    }
+
+    const anchor = new Date(`${start}T00:00:00Z`);
+    const cycleMonths = subscription.cycle === "monthly" ? 1 : 12;
+    const monthsElapsed =
+      (current.getUTCFullYear() - anchor.getUTCFullYear()) * 12 +
+      current.getUTCMonth() -
+      anchor.getUTCMonth();
+    // Skip completed cycles while keeping each projected date tied to the original day.
+    let offset = Math.max(
+      0,
+      Math.floor(monthsElapsed / cycleMonths) * cycleMonths,
+    );
+    for (
+      let date = billingDate(anchor, offset);
+      date < end;
+      date = billingDate(anchor, offset)
+    ) {
+      if (date >= today) charges.push({ subscription, date });
+      offset += cycleMonths;
+    }
+  }
+
+  return charges.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function createDemoSubscriptions(today: string): Subscription[] {

@@ -52,8 +52,57 @@ describe("subscription calculations", () => {
       { ...monthly, id: "usd", currency: "USD" },
     ];
     assert.deepEqual(
-      upcomingCharges(records, "PHP", "2026-11-12").map((item) => item.id),
-      ["a", "trial"],
+      upcomingCharges(records, "PHP", "2026-11-12").map(
+        ({ subscription }) => subscription.id,
+      ),
+      ["a", "trial", "past"],
+    );
+  });
+
+  it("forecasts short months and restores the original billing day in later months", () => {
+    const plan = { ...monthly, nextChargeDate: "2027-01-31" };
+    assert.deepEqual(
+      upcomingCharges([plan], "PHP", "2027-02-01").map(({ date }) => date),
+      ["2027-02-28"],
+    );
+    assert.deepEqual(
+      upcomingCharges([plan], "PHP", "2027-02-28").map(({ date }) => date),
+      ["2027-02-28"],
+    );
+    assert.deepEqual(
+      upcomingCharges([plan], "PHP", "2027-03-02").map(({ date }) => date),
+      ["2027-03-31"],
+    );
+  });
+
+  it("counts both monthly charges when they fit inside the 30-day window", () => {
+    const plan = { ...monthly, nextChargeDate: "2027-02-01" };
+    assert.deepEqual(
+      upcomingCharges([plan], "PHP", "2027-02-01").map(({ date }) => date),
+      ["2027-02-01", "2027-03-01"],
+    );
+  });
+
+  it("projects yearly leap-day billing and leaves expired trials out of the forecast", () => {
+    const annual = {
+      ...monthly,
+      cycle: "yearly" as const,
+      nextChargeDate: "2024-02-29",
+    };
+    const expiredTrial = {
+      ...monthly,
+      status: "trial" as const,
+      nextChargeDate: "2027-01-01",
+    };
+    assert.deepEqual(
+      upcomingCharges([annual, expiredTrial], "PHP", "2027-02-28").map(
+        ({ date }) => date,
+      ),
+      ["2027-02-28"],
+    );
+    assert.deepEqual(
+      upcomingCharges([annual], "PHP", "2028-02-29").map(({ date }) => date),
+      ["2028-02-29"],
     );
   });
 
