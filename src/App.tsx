@@ -18,6 +18,7 @@ import {
 } from "./subscriptions";
 
 type Filter = "all" | SubscriptionStatus;
+const previewChargeCount = 4;
 
 export function App() {
   if (cloudSession) return <CloudDashboard session={cloudSession} />;
@@ -168,6 +169,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     () => cloud?.records ?? createDemoSubscriptions(today),
   );
   const [currency, setCurrency] = useState<Currency>("PHP");
+  const [showAllCharges, setShowAllCharges] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<"create" | Subscription | null>(null);
@@ -178,6 +180,9 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const formTrigger = useRef<HTMLButtonElement>(null);
   const monthly = monthlyTotal(subscriptions, currency);
   const upcoming = upcomingCharges(subscriptions, currency, today);
+  const displayedCharges = showAllCharges
+    ? upcoming
+    : upcoming.slice(0, previewChargeCount);
   const visible = subscriptions.filter(
     (item) =>
       (filter === "all" || item.status === filter) &&
@@ -337,7 +342,10 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
             Show totals in
             <select
               value={currency}
-              onChange={(event) => setCurrency(event.target.value as Currency)}
+              onChange={(event) => {
+                setCurrency(event.target.value as Currency);
+                setShowAllCharges(false);
+              }}
             >
               {currencies.map((value) => (
                 <option key={value}>{value}</option>
@@ -525,8 +533,8 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
               <h2 id="upcoming-heading">Coming up</h2>
               <span className="count-label">{currency}</span>
             </div>
-            <div className="upcoming-list">
-              {upcoming.slice(0, 4).map(({ subscription: item, date }) => (
+            <div className="upcoming-list" id="upcoming-charges">
+              {displayedCharges.map(({ subscription: item, date }) => (
                 <div className="upcoming-item" key={`${item.id}-${date}`}>
                   <div className="date-tile">
                     <span>
@@ -553,6 +561,19 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 </div>
               ))}
             </div>
+            {upcoming.length > previewChargeCount && (
+              <button
+                type="button"
+                className="row-button mx-4 mb-3 mt-1"
+                aria-expanded={showAllCharges}
+                aria-controls="upcoming-charges"
+                onClick={() => setShowAllCharges((expanded) => !expanded)}
+              >
+                {showAllCharges
+                  ? "Show fewer charges"
+                  : `Show all ${upcoming.length} charges`}
+              </button>
+            )}
             {upcoming.length === 0 && (
               <p className="aside-empty">
                 No scheduled charges in {currency} in the next 30 days.
