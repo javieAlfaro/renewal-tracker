@@ -92,6 +92,17 @@ Restart Vite or rebuild the Vercel site after setting the values. Cloud mode use
 
 For Vercel, use the repository root, the Vite framework preset, `npm run build` as the build command, and `dist` as the output directory. The starter uses a single page with section anchors. The included font is bundled locally.
 
+### Troubleshoot the first cloud deployment
+
+| Symptom                                                          | Check                                                                                                                                                                      |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The deployed site opens in sample mode                           | Set the four `VITE_*` values for the environment you deployed to, then trigger a fresh build.                                                                              |
+| Cognito shows `redirect_mismatch`                                | Compare the app client's callback URL with the browser's exact origin plus `/`. CDK sets that URL from `frontendOrigin`. On the local server, use `http://localhost:5173`. |
+| Sign-in works but the browser blocks API calls with a CORS error | Check that the API's allowed origin matches the browser's scheme, hostname, and port. Compare the value with `frontendOrigin` in the last CDK deployment.                  |
+| An authenticated API request returns `401` or `403`              | Confirm the client is configured from the same stack as the API and uses a Cognito access token with the route's required scope. Sign in again to obtain a fresh token.    |
+
+Use the CloudFormation stack outputs as the source for the frontend settings. [Cognito troubleshooting](https://docs.aws.amazon.com/cognito/latest/developerguide/troubleshooting.html) · [API Gateway CORS](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-cors.html)
+
 ## Next milestones
 
 1. Deploy the stack and verify sign-in, persistence, sign-out, and account isolation in AWS.
