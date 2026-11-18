@@ -1,17 +1,16 @@
 import { UserManager, WebStorageStateStore, type User } from "oidc-client-ts";
+import { readCloudConfig } from "./cloud-config";
 import { subscriptionApi } from "./subscriptions-api";
 
-const apiUrl = import.meta.env.VITE_API_URL;
-const authority = import.meta.env.VITE_COGNITO_ISSUER;
-const domain = import.meta.env.VITE_COGNITO_DOMAIN;
-const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID;
-const config = [apiUrl, authority, domain, clientId];
+const config = readCloudConfig(import.meta.env);
 const returnUrl = `${window.location.origin}/`;
 
-export const hasCloudConfig = config.some(Boolean);
+export const cloudConfigError =
+  config.mode === "invalid" ? config.message : null;
 
 function createCloudSession() {
-  if (!config.every(Boolean)) return null;
+  if (config.mode !== "cloud") return null;
+  const { apiUrl, authority, domain, clientId } = config;
 
   const manager = new UserManager({
     authority,

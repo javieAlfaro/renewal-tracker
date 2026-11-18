@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { cloudSession, hasCloudConfig } from "./cloud-session";
+import { cloudConfigError, cloudSession } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
 import { subscriptionsCsv } from "./subscriptions-csv";
 import type { NewSubscription, SubscriptionDetails } from "./subscriptions-api";
@@ -21,11 +21,11 @@ type Filter = "all" | SubscriptionStatus;
 
 export function App() {
   if (cloudSession) return <CloudDashboard session={cloudSession} />;
-  if (hasCloudConfig) {
+  if (cloudConfigError) {
     return (
       <CloudScreen
-        title="Cloud configuration incomplete"
-        message="Set all four public configuration values and reload."
+        title="Check the cloud configuration"
+        message={cloudConfigError}
       />
     );
   }
