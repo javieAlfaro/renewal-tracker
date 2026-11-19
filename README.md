@@ -17,6 +17,8 @@ Monthly equivalents include active plans. The 30-day forecast projects active mo
 
 Use **Export CSV** in the subscriptions list to download a copy of all loaded records, including cancelled plans. Search and status filters only affect the on-screen list. The export includes the amount in each plan's original currency.
 
+The category filter combines with search and status filters. It includes categories from your saved records. CSV export continues to include the full list regardless of the selected filters.
+
 ## Project layout
 
 ```text

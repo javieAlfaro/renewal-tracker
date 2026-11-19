@@ -172,6 +172,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const [currency, setCurrency] = useState<Currency>("PHP");
   const [showAllCharges, setShowAllCharges] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<"create" | Subscription | null>(null);
   const [saving, setSaving] = useState(false);
@@ -187,8 +188,15 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const visible = subscriptions.filter(
     (item) =>
       (filter === "all" || item.status === filter) &&
+      (!categoryFilter || item.category === categoryFilter) &&
       item.name.toLowerCase().includes(search.toLowerCase()),
   );
+  const categoryOptions = [
+    ...new Set([
+      ...subscriptions.map((item) => item.category),
+      ...(categoryFilter ? [categoryFilter] : []),
+    ]),
+  ].sort((a, b) => a.localeCompare(b));
   const activeCount = subscriptions.filter(
     (item) => item.status === "active",
   ).length;
@@ -228,6 +236,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
           : { ...details, id: crypto.randomUUID() };
         setSubscriptions((items) => [...items, subscription]);
         setFilter("all");
+        setCategoryFilter("");
         setSearch("");
         setNotice(`${subscription.name} added.`);
       } else {
@@ -431,6 +440,20 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                   ),
                 )}
               </div>
+              <label className="currency-label">
+                Category
+                <select
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value)}
+                >
+                  <option value="">All categories</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="search-label">
                 <span className="sr-only">Search subscriptions</span>
                 <input
