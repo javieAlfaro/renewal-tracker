@@ -10,6 +10,7 @@ import {
   formatDate,
   formatMoney,
   monthlyTotal,
+  annualTotal,
   todayInManila,
   upcomingCharges,
   type Currency,
@@ -357,6 +358,10 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
           <article className="stat-card featured">
             <p>Monthly equivalent</p>
             <strong>{formatMoney(monthly, currency)}</strong>
+            <p>
+              {formatMoney(annualTotal(subscriptions, currency), currency)}{" "}
+              estimated per year
+            </p>
             <small>Active plans · yearly costs divided by 12</small>
           </article>
           <article className="stat-card">

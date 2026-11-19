@@ -73,6 +73,19 @@ export function monthlyTotal(
   return Math.round(total);
 }
 
+export function annualTotal(
+  subscriptions: Subscription[],
+  currency: Currency,
+): number {
+  return subscriptions
+    .filter((item) => item.currency === currency && item.status === "active")
+    .reduce(
+      (sum, item) =>
+        sum + item.amountMinor * (item.cycle === "monthly" ? 12 : 1),
+      0,
+    );
+}
+
 function billingDate(anchor: Date, monthsAfterAnchor: number): string {
   const month = anchor.getUTCMonth() + monthsAfterAnchor;
   const year = anchor.getUTCFullYear();

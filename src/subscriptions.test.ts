@@ -4,6 +4,7 @@ import {
   addDays,
   daysBetween,
   monthlyTotal,
+  annualTotal,
   todayInManila,
   upcomingCharges,
   type Subscription,
@@ -21,6 +22,22 @@ const monthly: Subscription = {
 };
 
 describe("subscription calculations", () => {
+  it("estimates annual spending from original amounts without rounding monthly equivalents", () => {
+    assert.equal(
+      annualTotal(
+        [
+          { ...monthly, amountMinor: 101 },
+          { ...monthly, amountMinor: 10001, cycle: "yearly" },
+          { ...monthly, currency: "USD" },
+          { ...monthly, status: "trial" },
+          { ...monthly, status: "cancelled" },
+        ],
+        "PHP",
+      ),
+      11213,
+    );
+    assert.equal(annualTotal([], "PHP"), 0);
+  });
   it("normalizes yearly costs and excludes other currencies, trials, and cancelled plans", () => {
     assert.equal(
       monthlyTotal(
