@@ -463,6 +463,19 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                   placeholder="Search plans…"
                 />
               </label>
+              {(filter !== "all" || categoryFilter || search) && (
+                <button
+                  type="button"
+                  className="row-button"
+                  onClick={() => {
+                    setFilter("all");
+                    setCategoryFilter("");
+                    setSearch("");
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
             <div className="table-scroll">
               <table>
