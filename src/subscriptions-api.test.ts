@@ -94,3 +94,52 @@ it("sends edited details and cancellation status to the individual subscription 
   );
   assert.deepEqual(await api.update(id, changes), edited);
 });
+
+it("stops a repeating pagination cursor instead of requesting pages indefinitely", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async () =>
+    Response.json({ subscriptions: [record], nextCursor: "same-cursor" }),
+  );
+  const api = subscriptionApi(
+    "https://api.example.test",
+    async () => "test-token",
+  );
+  await assert.rejects(
+    api.list(new AbortController().signal),
+    /complete subscription list/,
+  );
+  assert.equal(fetch.mock.callCount(), 2);
+});
+
+it("rejects the entire list when a later page fails", async (t) => {
+  let page = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    page += 1;
+    return page === 1
+      ? Response.json({ subscriptions: [record], nextCursor: "next-page" })
+      : new Response(null, { status: 500 });
+  });
+  const api = subscriptionApi(
+    "https://api.example.test",
+    async () => "test-token",
+  );
+  await assert.rejects(
+    api.list(new AbortController().signal),
+    /Could not load subscriptions/,
+  );
+});
+
+it("reports a missing subscription when an edit returns 404", async (t) => {
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async () => new Response(null, { status: 404 }),
+  );
+  const api = subscriptionApi(
+    "https://api.example.test",
+    async () => "test-token",
+  );
+  await assert.rejects(
+    api.update("missing-id", details),
+    /subscription is unavailable/,
+  );
+});
