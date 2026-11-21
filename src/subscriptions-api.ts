@@ -18,6 +18,7 @@ export function subscriptionApi(
       ...options,
       headers,
       redirect: "error",
+      cache: "no-store",
     });
     if (response.status === 401) {
       throw new Error("Your session has expired. Sign out and sign in again.");

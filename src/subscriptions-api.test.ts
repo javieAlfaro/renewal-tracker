@@ -21,6 +21,7 @@ it("loads all pages using a Cognito access token and an encoded cursor", async (
       "Bearer test-token",
     );
     calls.push(new URL(url));
+    assert.equal(options.cache, "no-store");
     return Response.json(
       calls.length === 1
         ? { subscriptions: [record], nextCursor: "id &+" }
