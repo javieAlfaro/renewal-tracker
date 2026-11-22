@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { cloudConfigError, cloudSession } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
 import { subscriptionsCsv } from "./subscriptions-csv";
+import { filterSubscriptions } from "./subscriptions-list";
 import type { NewSubscription, SubscriptionDetails } from "./subscriptions-api";
 import {
   currencies,
@@ -185,12 +186,11 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const displayedCharges = showAllCharges
     ? upcoming
     : upcoming.slice(0, previewChargeCount);
-  const visible = subscriptions.filter(
-    (item) =>
-      (filter === "all" || item.status === filter) &&
-      (!categoryFilter || item.category === categoryFilter) &&
-      item.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const visible = filterSubscriptions(subscriptions, {
+    status: filter,
+    category: categoryFilter,
+    search,
+  });
   const categoryOptions = [
     ...new Set([
       ...subscriptions.map((item) => item.category),
@@ -455,12 +455,12 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 </select>
               </label>
               <label className="search-label">
-                <span className="sr-only">Search subscriptions</span>
+                <span className="sr-only">Search names or categories</span>
                 <input
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search plans…"
+                  placeholder="Name or category…"
                 />
               </label>
               {(filter !== "all" || categoryFilter || search) && (

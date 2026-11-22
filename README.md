@@ -19,6 +19,8 @@ Use **Export CSV** in the subscriptions list to download a copy of all loaded re
 
 The category filter combines with search and status filters. It includes categories from your saved records. CSV export continues to include the full list regardless of the selected filters.
 
+Search matches service names and categories, ignores letter case, and trims surrounding spaces.
+
 ## Project layout
 
 ```text
