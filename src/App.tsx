@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { cloudConfigError, cloudSession } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
 import { subscriptionsCsv } from "./subscriptions-csv";
-import { filterSubscriptions } from "./subscriptions-list";
+import {
+  filterSubscriptions,
+  sortSubscriptions,
+  type SubscriptionSort,
+} from "./subscriptions-list";
 import type { NewSubscription, SubscriptionDetails } from "./subscriptions-api";
 import {
   currencies,
@@ -175,6 +179,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SubscriptionSort>("original");
   const [form, setForm] = useState<"create" | Subscription | null>(null);
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
@@ -186,11 +191,14 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const displayedCharges = showAllCharges
     ? upcoming
     : upcoming.slice(0, previewChargeCount);
-  const visible = filterSubscriptions(subscriptions, {
-    status: filter,
-    category: categoryFilter,
-    search,
-  });
+  const visible = sortSubscriptions(
+    filterSubscriptions(subscriptions, {
+      status: filter,
+      category: categoryFilter,
+      search,
+    }),
+    sort,
+  );
   const categoryOptions = [
     ...new Set([
       ...subscriptions.map((item) => item.category),
@@ -452,6 +460,19 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                       {category}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label className="currency-label">
+                Sort by
+                <select
+                  value={sort}
+                  onChange={(event) =>
+                    setSort(event.target.value as SubscriptionSort)
+                  }
+                >
+                  <option value="original">Original order</option>
+                  <option value="name">Service name (A–Z)</option>
+                  <option value="billing-date">Saved billing date</option>
                 </select>
               </label>
               <label className="search-label">

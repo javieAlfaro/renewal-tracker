@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { filterSubscriptions } from "./subscriptions-list";
+import { filterSubscriptions, sortSubscriptions } from "./subscriptions-list";
 import type { Subscription } from "./subscriptions";
 
 const records: Subscription[] = [
@@ -59,5 +59,35 @@ describe("subscription search", () => {
       filterSubscriptions(records, { ...filters, search: "missing" }),
       [],
     );
+  });
+});
+
+describe("subscription sorting", () => {
+  it("sorts names naturally without mutating the source or default order", () => {
+    const plans = [
+      { ...records[0], name: "Plan 10" },
+      { ...records[1], name: "plan 2" },
+      { ...records[0], id: "alpha", name: "Alpha" },
+    ];
+    const original = plans.map((plan) => ({ ...plan }));
+    assert.deepEqual(
+      sortSubscriptions(plans, "name").map((plan) => plan.name),
+      ["Alpha", "plan 2", "Plan 10"],
+    );
+    assert.deepEqual(plans, original);
+    assert.deepEqual(sortSubscriptions(plans, "original"), original);
+  });
+
+  it("sorts saved dates chronologically and breaks ties by service name", () => {
+    const plans = [
+      { ...records[0], nextChargeDate: "2027-01-01" },
+      { ...records[0], id: "same-date", nextChargeDate: "2026-12-31" },
+      { ...records[1], nextChargeDate: "2026-12-31" },
+    ];
+    assert.deepEqual(
+      sortSubscriptions(plans, "billing-date").map((plan) => plan.id),
+      ["netflix", "same-date", "spotify"],
+    );
+    assert.deepEqual(sortSubscriptions([], "billing-date"), []);
   });
 });

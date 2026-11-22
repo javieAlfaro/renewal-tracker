@@ -21,6 +21,8 @@ The category filter combines with search and status filters. It includes categor
 
 Search matches service names and categories, ignores letter case, and trims surrounding spaces.
 
+Use **Sort by** to show plans in their original order, alphabetically by service name, or by saved billing date (earliest first). Saved dates are schedule anchors, not projected renewal dates. Sorting applies to the displayed list; CSV export keeps the original record order.
+
 ## Project layout
 
 ```text
