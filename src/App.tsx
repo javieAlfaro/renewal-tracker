@@ -212,6 +212,12 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     (item) => item.status === "trial",
   ).length;
 
+  function clearFilters() {
+    setFilter("all");
+    setCategoryFilter("");
+    setSearch("");
+  }
+
   function closeForm() {
     setForm(null);
     (formTrigger.current ?? addButton.current)?.focus();
@@ -415,8 +421,8 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
             <div className="section-heading">
               <h2 id="subscriptions-heading">Your subscriptions</h2>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className="count-label">
-                  {subscriptions.length} total
+                <span className="count-label" role="status" aria-atomic="true">
+                  {visible.length} of {subscriptions.length} shown
                 </span>
                 <button
                   type="button"
@@ -488,11 +494,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 <button
                   type="button"
                   className="row-button"
-                  onClick={() => {
-                    setFilter("all");
-                    setCategoryFilter("");
-                    setSearch("");
-                  }}
+                  onClick={clearFilters}
                 >
                   Clear filters
                 </button>
@@ -577,8 +579,25 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
             </div>
             {visible.length === 0 && (
               <div className="empty-state">
-                <h3>No subscriptions here yet</h3>
-                <p>Try another filter or add a subscription.</p>
+                <h3>
+                  {subscriptions.length === 0
+                    ? "No subscriptions here yet"
+                    : "No matching subscriptions"}
+                </h3>
+                <p>
+                  {subscriptions.length === 0
+                    ? "Add your first subscription to start tracking charges."
+                    : "Try a different search, status, or category."}
+                </p>
+                {subscriptions.length > 0 && (
+                  <button
+                    type="button"
+                    className="row-button"
+                    onClick={clearFilters}
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
             )}
             <div className="table-footnote">

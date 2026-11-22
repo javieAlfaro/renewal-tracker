@@ -23,6 +23,8 @@ Search matches service names and categories, ignores letter case, and trims surr
 
 Use **Sort by** to show plans in their original order, alphabetically by service name, or by saved billing date (earliest first). Saved dates are schedule anchors, not projected renewal dates. Sorting applies to the displayed list; CSV export keeps the original record order.
 
+The list shows how many records match the current filters. If nothing matches, use **Clear filters** to restore the full list while keeping your selected sort order.
+
 ## Project layout
 
 ```text
