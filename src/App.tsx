@@ -232,14 +232,17 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     (formTrigger.current ?? addButton.current)?.focus();
   }
 
-  function downloadSubscriptions() {
-    const csv = new Blob([subscriptionsCsv(subscriptions)], {
+  function downloadSubscriptions(
+    records: readonly Subscription[],
+    filtered = false,
+  ) {
+    const csv = new Blob([subscriptionsCsv(records)], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(csv);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `subscriptions-${todayInManila()}.csv`;
+    link.download = `subscriptions-${filtered ? "filtered-" : ""}${todayInManila()}.csv`;
     document.body.append(link);
     link.click();
     link.remove();
@@ -436,9 +439,18 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                   className="row-button disabled:opacity-50"
                   aria-label="Export all subscriptions as CSV"
                   disabled={subscriptions.length === 0 || saving}
-                  onClick={downloadSubscriptions}
+                  onClick={() => downloadSubscriptions(subscriptions)}
                 >
                   Export CSV
+                </button>
+                <button
+                  type="button"
+                  className="row-button disabled:opacity-50"
+                  aria-label="Export shown subscriptions as CSV"
+                  disabled={visible.length === 0 || saving}
+                  onClick={() => downloadSubscriptions(visible, true)}
+                >
+                  Export shown
                 </button>
               </div>
             </div>

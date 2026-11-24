@@ -17,6 +17,8 @@ Monthly equivalents include active plans. The 30-day forecast projects active mo
 
 Use **Export CSV** in the subscriptions list to download a copy of all loaded records, including cancelled plans. Search and status filters only affect the on-screen list. The export includes the amount in each plan's original currency.
 
+Use **Export shown** to download only the records matching every list filter, in the selected sort order. Its filename includes `filtered` to distinguish it from the full export. Both exports preserve original currencies and saved billing dates, even when the list displays projected renewals. **Export shown** is disabled when no records match.
+
 The category filter combines with search and status filters. It includes categories from your saved records. CSV export continues to include the full list regardless of the selected filters.
 
 Use **Plan currency** to filter records by their original currency. It combines with the other list filters. **Clear filters** restores all currencies. This control is independent of **Show totals in**, which selects the summary and forecast currency.
