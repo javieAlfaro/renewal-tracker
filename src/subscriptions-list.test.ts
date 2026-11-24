@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { filterSubscriptions, sortSubscriptions } from "./subscriptions-list";
-import type { Subscription } from "./subscriptions";
+import { nextRenewalDate, type Subscription } from "./subscriptions";
 
 const records: Subscription[] = [
   {
@@ -143,6 +143,47 @@ describe("subscription search", () => {
 });
 
 describe("subscription sorting", () => {
+  it("projects renewals past old anchors and puts unscheduled records last", () => {
+    const plans: Subscription[] = [
+      { ...records[0], id: "old", nextChargeDate: "2025-01-31" },
+      {
+        ...records[0],
+        id: "yearly",
+        cycle: "yearly",
+        nextChargeDate: "2024-02-29",
+      },
+      { ...records[0], id: "future", nextChargeDate: "2026-03-02" },
+      {
+        ...records[0],
+        id: "trial",
+        status: "trial",
+        nextChargeDate: "2026-02-28",
+      },
+      {
+        ...records[0],
+        id: "expired",
+        name: "Expired",
+        status: "trial",
+        nextChargeDate: "2026-02-01",
+      },
+      { ...records[1], id: "cancelled" },
+    ];
+    assert.equal(nextRenewalDate(plans[0], "2026-02-28"), "2026-02-28");
+    assert.equal(nextRenewalDate(plans[0], "2026-03-01"), "2026-03-31");
+    assert.equal(nextRenewalDate(plans[1], "2026-03-01"), "2027-02-28");
+    assert.equal(nextRenewalDate(plans[1], "2028-02-01"), "2028-02-29");
+    assert.equal(nextRenewalDate(plans[2], "2026-02-28"), "2026-03-02");
+    assert.equal(nextRenewalDate(plans[4], "2026-02-28"), null);
+    assert.equal(nextRenewalDate(plans[5], "2026-02-28"), null);
+    assert.deepEqual(
+      sortSubscriptions(plans, "next-renewal", "2026-02-28").map(
+        (plan) => plan.id,
+      ),
+      ["old", "yearly", "trial", "future", "expired", "cancelled"],
+    );
+    assert.equal(plans[0].nextChargeDate, "2025-01-31");
+  });
+
   it("sorts names naturally without mutating the source or default order", () => {
     const plans = [
       { ...records[0], name: "Plan 10" },

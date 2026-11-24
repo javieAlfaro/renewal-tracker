@@ -99,6 +99,28 @@ interface UpcomingCharge {
   date: string;
 }
 
+export function nextRenewalDate(
+  subscription: Subscription,
+  today: string,
+): string | null {
+  if (subscription.status === "cancelled") return null;
+  const start = subscription.nextChargeDate;
+  if (subscription.status === "trial") return start >= today ? start : null;
+  const anchor = new Date(`${start}T00:00:00Z`);
+  const current = new Date(`${today}T00:00:00Z`);
+  const cycleMonths = subscription.cycle === "monthly" ? 1 : 12;
+  const monthsElapsed =
+    (current.getUTCFullYear() - anchor.getUTCFullYear()) * 12 +
+    current.getUTCMonth() -
+    anchor.getUTCMonth();
+  const offset = Math.max(
+    0,
+    Math.floor(monthsElapsed / cycleMonths) * cycleMonths,
+  );
+  const date = billingDate(anchor, offset);
+  return date >= today ? date : billingDate(anchor, offset + cycleMonths);
+}
+
 export function upcomingCharges(
   subscriptions: Subscription[],
   currency: Currency,

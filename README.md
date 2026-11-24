@@ -29,6 +29,8 @@ Use **Sort by** to show plans in their original order, alphabetically by service
 
 The list shows how many records match the current filters. If nothing matches, use **Clear filters** to restore the full list while keeping your selected sort order.
 
+Choose **Next renewal (soonest)** to order plans by their next estimated charge from today in Manila, including renewals beyond the 30-day forecast. The date column shows that estimate while this sort is selected. Cancelled plans and trials that already ended appear last. Month-end and leap-year estimates keep the original schedule anchor; saved dates remain unchanged.
+
 ## Project layout
 
 ```text

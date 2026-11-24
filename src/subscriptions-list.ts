@@ -1,3 +1,4 @@
+import { nextRenewalDate, todayInManila } from "./subscriptions";
 import type {
   BillingCycle,
   Currency,
@@ -13,15 +14,30 @@ interface SubscriptionFilters {
   cycle?: "" | BillingCycle;
 }
 
-export type SubscriptionSort = "original" | "name" | "billing-date";
+export type SubscriptionSort =
+  "original" | "name" | "billing-date" | "next-renewal";
 
 export function sortSubscriptions(
   subscriptions: readonly Subscription[],
   sort: SubscriptionSort,
+  today = todayInManila(),
 ): Subscription[] {
   const result = [...subscriptions];
   if (sort === "original") return result;
+  const renewals = new Map(
+    sort === "next-renewal"
+      ? subscriptions.map(
+          (item) => [item.id, nextRenewalDate(item, today)] as const,
+        )
+      : [],
+  );
   return result.sort((a, b) => {
+    if (sort === "next-renewal") {
+      const dateOrder = (renewals.get(a.id) ?? "9999-12-31").localeCompare(
+        renewals.get(b.id) ?? "9999-12-31",
+      );
+      if (dateOrder) return dateOrder;
+    }
     if (sort === "billing-date") {
       const dateOrder = a.nextChargeDate.localeCompare(b.nextChargeDate);
       if (dateOrder) return dateOrder;

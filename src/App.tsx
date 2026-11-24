@@ -18,6 +18,7 @@ import {
   annualTotal,
   todayInManila,
   upcomingCharges,
+  nextRenewalDate,
   type BillingCycle,
   type Currency,
   type Subscription,
@@ -203,6 +204,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
       search,
     }),
     sort,
+    today,
   );
   const categoryOptions = [
     ...new Set([
@@ -511,6 +513,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                   <option value="original">Original order</option>
                   <option value="name">Service name (A–Z)</option>
                   <option value="billing-date">Saved billing date</option>
+                  <option value="next-renewal">Next renewal (soonest)</option>
                 </select>
               </label>
               <label className="search-label">
@@ -542,7 +545,11 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                   <tr>
                     <th scope="col">Service</th>
                     <th scope="col">Amount</th>
-                    <th scope="col">Saved billing date</th>
+                    <th scope="col">
+                      {sort === "next-renewal"
+                        ? "Next renewal"
+                        : "Saved billing date"}
+                    </th>
                     <th scope="col">Status</th>
                     <th scope="col">
                       <span className="sr-only">Actions</span>
@@ -576,14 +583,20 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                       </td>
                       <td>
                         <span className="charge-date">
-                          {formatDate(item.nextChargeDate)}
+                          {sort === "next-renewal"
+                            ? nextRenewalDate(item, today)
+                              ? formatDate(nextRenewalDate(item, today)!)
+                              : "No upcoming charge"
+                            : formatDate(item.nextChargeDate)}
                         </span>
                         <small>
-                          {item.status === "trial"
-                            ? "Trial ends"
-                            : item.status === "cancelled"
-                              ? "Previous schedule"
-                              : "Schedule starts"}
+                          {sort === "next-renewal"
+                            ? "Estimated from saved schedule"
+                            : item.status === "trial"
+                              ? "Trial ends"
+                              : item.status === "cancelled"
+                                ? "Previous schedule"
+                                : "Schedule starts"}
                         </small>
                       </td>
                       <td>
