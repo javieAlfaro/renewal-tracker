@@ -18,6 +18,7 @@ import {
   annualTotal,
   todayInManila,
   upcomingCharges,
+  type BillingCycle,
   type Currency,
   type Subscription,
   type SubscriptionStatus,
@@ -179,6 +180,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState<"" | Currency>("");
+  const [cycleFilter, setCycleFilter] = useState<"" | BillingCycle>("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SubscriptionSort>("original");
   const [form, setForm] = useState<"create" | Subscription | null>(null);
@@ -197,6 +199,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
       status: filter,
       category: categoryFilter,
       currency: currencyFilter,
+      cycle: cycleFilter,
       search,
     }),
     sort,
@@ -218,6 +221,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     setFilter("all");
     setCategoryFilter("");
     setCurrencyFilter("");
+    setCycleFilter("");
     setSearch("");
   }
 
@@ -484,6 +488,19 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 </select>
               </label>
               <label className="currency-label">
+                Billing cycle
+                <select
+                  value={cycleFilter}
+                  onChange={(event) =>
+                    setCycleFilter(event.target.value as "" | BillingCycle)
+                  }
+                >
+                  <option value="">All cycles</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </label>
+              <label className="currency-label">
                 Sort by
                 <select
                   value={sort}
@@ -508,6 +525,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
               {(filter !== "all" ||
                 categoryFilter ||
                 currencyFilter ||
+                cycleFilter ||
                 search) && (
                 <button
                   type="button"

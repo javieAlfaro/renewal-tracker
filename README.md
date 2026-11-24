@@ -21,6 +21,8 @@ The category filter combines with search and status filters. It includes categor
 
 Use **Plan currency** to filter records by their original currency. It combines with the other list filters. **Clear filters** restores all currencies. This control is independent of **Show totals in**, which selects the summary and forecast currency.
 
+Use **Billing cycle** to show monthly or yearly plans. It combines with all other list filters and resets to **All cycles** when you clear filters or add a subscription.
+
 Search matches service names and categories, ignores letter case, and trims surrounding spaces.
 
 Use **Sort by** to show plans in their original order, alphabetically by service name, or by saved billing date (earliest first). Saved dates are schedule anchors, not projected renewal dates. Sorting applies to the displayed list; CSV export keeps the original record order.

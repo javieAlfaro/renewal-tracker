@@ -1,4 +1,5 @@
 import type {
+  BillingCycle,
   Currency,
   Subscription,
   SubscriptionStatus,
@@ -9,6 +10,7 @@ interface SubscriptionFilters {
   category: string;
   search: string;
   currency?: "" | Currency;
+  cycle?: "" | BillingCycle;
 }
 
 export type SubscriptionSort = "original" | "name" | "billing-date";
@@ -33,7 +35,7 @@ export function sortSubscriptions(
 
 export function filterSubscriptions(
   subscriptions: readonly Subscription[],
-  { status, category, search, currency }: SubscriptionFilters,
+  { status, category, search, currency, cycle }: SubscriptionFilters,
 ): Subscription[] {
   const query = search.trim().toLowerCase();
   return subscriptions.filter(
@@ -41,6 +43,7 @@ export function filterSubscriptions(
       (status === "all" || item.status === status) &&
       (!category || item.category === category) &&
       (!currency || item.currency === currency) &&
+      (!cycle || item.cycle === cycle) &&
       (item.name.toLowerCase().includes(query) ||
         item.category.toLowerCase().includes(query)),
   );

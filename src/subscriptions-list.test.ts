@@ -27,6 +27,46 @@ const records: Subscription[] = [
 ];
 
 describe("subscription search", () => {
+  it("combines billing cycle with currency, status, category, and search", () => {
+    const plans: Subscription[] = [
+      ...records,
+      { ...records[0], id: "annual", cycle: "yearly" },
+      { ...records[0], id: "annual-usd", cycle: "yearly", currency: "USD" },
+    ];
+    const filters = { status: "all" as const, category: "", search: "" };
+    assert.deepEqual(
+      filterSubscriptions(plans, { ...filters, cycle: "" }),
+      plans,
+    );
+    assert.deepEqual(
+      filterSubscriptions(plans, { ...filters, cycle: "monthly" }),
+      records,
+    );
+    assert.deepEqual(
+      filterSubscriptions(plans, {
+        ...filters,
+        cycle: "yearly",
+        currency: "PHP",
+        status: "active",
+        category: "Entertainment",
+        search: "spot",
+      }),
+      [plans[2]],
+    );
+    assert.deepEqual(
+      filterSubscriptions(plans, {
+        ...filters,
+        cycle: "yearly",
+        status: "cancelled",
+      }),
+      [],
+    );
+    assert.deepEqual(
+      plans.map((plan) => plan.id),
+      ["spotify", "netflix", "annual", "annual-usd"],
+    );
+  });
+
   it("filters by original currency together with the other constraints", () => {
     const plans: Subscription[] = [
       ...records,
