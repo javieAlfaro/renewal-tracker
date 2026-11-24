@@ -27,6 +27,46 @@ const records: Subscription[] = [
 ];
 
 describe("subscription search", () => {
+  it("filters by original currency together with the other constraints", () => {
+    const plans: Subscription[] = [
+      ...records,
+      { ...records[0], id: "usd", currency: "USD" },
+      { ...records[0], id: "eur", currency: "EUR", category: "Storage" },
+    ];
+    const filters = { status: "all" as const, category: "", search: "" };
+    assert.deepEqual(filterSubscriptions(plans, filters), plans);
+    assert.deepEqual(
+      filterSubscriptions(plans, { ...filters, currency: "" }),
+      plans,
+    );
+    assert.deepEqual(
+      filterSubscriptions(plans, { ...filters, currency: "USD" }),
+      [plans[2]],
+    );
+    assert.deepEqual(
+      filterSubscriptions(plans, {
+        ...filters,
+        currency: "PHP",
+        status: "active",
+        search: "spot",
+        category: "Entertainment",
+      }),
+      [plans[0]],
+    );
+    assert.deepEqual(
+      filterSubscriptions(plans, {
+        ...filters,
+        currency: "EUR",
+        category: "Entertainment",
+      }),
+      [],
+    );
+    assert.deepEqual(
+      filterSubscriptions([], { ...filters, currency: "PHP" }),
+      [],
+    );
+  });
+
   it("finds names and categories regardless of case or surrounding whitespace", () => {
     const filters = {
       status: "all" as const,

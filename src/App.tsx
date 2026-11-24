@@ -178,6 +178,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const [showAllCharges, setShowAllCharges] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [currencyFilter, setCurrencyFilter] = useState<"" | Currency>("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SubscriptionSort>("original");
   const [form, setForm] = useState<"create" | Subscription | null>(null);
@@ -195,6 +196,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     filterSubscriptions(subscriptions, {
       status: filter,
       category: categoryFilter,
+      currency: currencyFilter,
       search,
     }),
     sort,
@@ -215,6 +217,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   function clearFilters() {
     setFilter("all");
     setCategoryFilter("");
+    setCurrencyFilter("");
     setSearch("");
   }
 
@@ -249,9 +252,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
           ? await cloud.create({ ...details, status: details.status })
           : { ...details, id: crypto.randomUUID() };
         setSubscriptions((items) => [...items, subscription]);
-        setFilter("all");
-        setCategoryFilter("");
-        setSearch("");
+        clearFilters();
         setNotice(`${subscription.name} added.`);
       } else {
         const subscription = cloud
@@ -469,6 +470,20 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 </select>
               </label>
               <label className="currency-label">
+                Plan currency
+                <select
+                  value={currencyFilter}
+                  onChange={(event) =>
+                    setCurrencyFilter(event.target.value as "" | Currency)
+                  }
+                >
+                  <option value="">All currencies</option>
+                  {currencies.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="currency-label">
                 Sort by
                 <select
                   value={sort}
@@ -490,7 +505,10 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                   placeholder="Name or category…"
                 />
               </label>
-              {(filter !== "all" || categoryFilter || search) && (
+              {(filter !== "all" ||
+                categoryFilter ||
+                currencyFilter ||
+                search) && (
                 <button
                   type="button"
                   className="row-button"
@@ -587,7 +605,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 <p>
                   {subscriptions.length === 0
                     ? "Add your first subscription to start tracking charges."
-                    : "Try a different search, status, or category."}
+                    : "Try different filters or a different search."}
                 </p>
                 {subscriptions.length > 0 && (
                   <button

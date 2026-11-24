@@ -19,6 +19,8 @@ Use **Export CSV** in the subscriptions list to download a copy of all loaded re
 
 The category filter combines with search and status filters. It includes categories from your saved records. CSV export continues to include the full list regardless of the selected filters.
 
+Use **Plan currency** to filter records by their original currency. It combines with the other list filters. **Clear filters** restores all currencies. This control is independent of **Show totals in**, which selects the summary and forecast currency.
+
 Search matches service names and categories, ignores letter case, and trims surrounding spaces.
 
 Use **Sort by** to show plans in their original order, alphabetically by service name, or by saved billing date (earliest first). Saved dates are schedule anchors, not projected renewal dates. Sorting applies to the displayed list; CSV export keeps the original record order.
