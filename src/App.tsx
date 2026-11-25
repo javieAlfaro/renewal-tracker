@@ -5,6 +5,7 @@ import { subscriptionsCsv } from "./subscriptions-csv";
 import {
   filterSubscriptions,
   sortSubscriptions,
+  type RenewalWindow,
   type SubscriptionSort,
 } from "./subscriptions-list";
 import type { NewSubscription, SubscriptionDetails } from "./subscriptions-api";
@@ -182,6 +183,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState<"" | Currency>("");
   const [cycleFilter, setCycleFilter] = useState<"" | BillingCycle>("");
+  const [renewalWindow, setRenewalWindow] = useState<RenewalWindow>("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SubscriptionSort>("original");
   const [form, setForm] = useState<"create" | Subscription | null>(null);
@@ -196,13 +198,18 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     ? upcoming
     : upcoming.slice(0, previewChargeCount);
   const visible = sortSubscriptions(
-    filterSubscriptions(subscriptions, {
-      status: filter,
-      category: categoryFilter,
-      currency: currencyFilter,
-      cycle: cycleFilter,
-      search,
-    }),
+    filterSubscriptions(
+      subscriptions,
+      {
+        status: filter,
+        category: categoryFilter,
+        currency: currencyFilter,
+        cycle: cycleFilter,
+        search,
+        renewalWindow,
+      },
+      today,
+    ),
     sort,
     today,
   );
@@ -224,6 +231,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     setCategoryFilter("");
     setCurrencyFilter("");
     setCycleFilter("");
+    setRenewalWindow("all");
     setSearch("");
   }
 
@@ -515,6 +523,19 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 </select>
               </label>
               <label className="currency-label">
+                Renewal due
+                <select
+                  value={renewalWindow}
+                  onChange={(event) =>
+                    setRenewalWindow(event.target.value as RenewalWindow)
+                  }
+                >
+                  <option value="all">Any time</option>
+                  <option value="7">Next 7 days</option>
+                  <option value="30">Next 30 days</option>
+                </select>
+              </label>
+              <label className="currency-label">
                 Sort by
                 <select
                   value={sort}
@@ -541,6 +562,7 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
                 categoryFilter ||
                 currencyFilter ||
                 cycleFilter ||
+                renewalWindow !== "all" ||
                 search) && (
                 <button
                   type="button"

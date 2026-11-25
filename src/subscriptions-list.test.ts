@@ -27,6 +27,76 @@ const records: Subscription[] = [
 ];
 
 describe("subscription search", () => {
+  it("filters projected renewals with inclusive today and exclusive window boundaries", () => {
+    const plans: Subscription[] = [
+      { ...records[0], id: "today", nextChargeDate: "2025-01-31" },
+      { ...records[0], id: "six", nextChargeDate: "2026-03-06" },
+      { ...records[0], id: "seven", nextChargeDate: "2026-03-07" },
+      {
+        ...records[0],
+        id: "29",
+        nextChargeDate: "2026-03-29",
+        status: "trial",
+      },
+      { ...records[0], id: "30", nextChargeDate: "2026-03-30" },
+      {
+        ...records[0],
+        id: "annual",
+        cycle: "yearly",
+        nextChargeDate: "2024-02-29",
+      },
+      {
+        ...records[0],
+        id: "expired",
+        status: "trial",
+        nextChargeDate: "2026-02-27",
+      },
+      { ...records[1], id: "cancelled" },
+    ];
+    const filters = { status: "all" as const, category: "", search: "" };
+    assert.deepEqual(
+      filterSubscriptions(
+        plans,
+        { ...filters, renewalWindow: "7" },
+        "2026-02-28",
+      ).map((plan) => plan.id),
+      ["today", "six", "annual"],
+    );
+    assert.deepEqual(
+      filterSubscriptions(
+        plans,
+        { ...filters, renewalWindow: "30" },
+        "2026-02-28",
+      ).map((plan) => plan.id),
+      ["today", "six", "seven", "29", "annual"],
+    );
+    assert.deepEqual(
+      filterSubscriptions(
+        plans,
+        { ...filters, renewalWindow: "all" },
+        "2026-02-28",
+      ),
+      plans,
+    );
+    assert.deepEqual(
+      filterSubscriptions(
+        plans,
+        { ...filters, renewalWindow: "30", status: "trial" },
+        "2026-02-28",
+      ).map((plan) => plan.id),
+      ["29"],
+    );
+    assert.deepEqual(
+      filterSubscriptions(
+        plans,
+        { ...filters, renewalWindow: "30", currency: "USD" },
+        "2026-02-28",
+      ),
+      [],
+    );
+    assert.equal(plans[0].nextChargeDate, "2025-01-31");
+  });
+
   it("combines billing cycle with currency, status, category, and search", () => {
     const plans: Subscription[] = [
       ...records,

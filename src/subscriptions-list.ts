@@ -1,4 +1,4 @@
-import { nextRenewalDate, todayInManila } from "./subscriptions";
+import { addDays, nextRenewalDate, todayInManila } from "./subscriptions";
 import type {
   BillingCycle,
   Currency,
@@ -12,7 +12,10 @@ interface SubscriptionFilters {
   search: string;
   currency?: "" | Currency;
   cycle?: "" | BillingCycle;
+  renewalWindow?: RenewalWindow;
 }
+
+export type RenewalWindow = "all" | "7" | "30";
 
 export type SubscriptionSort =
   "original" | "name" | "billing-date" | "next-renewal";
@@ -51,16 +54,30 @@ export function sortSubscriptions(
 
 export function filterSubscriptions(
   subscriptions: readonly Subscription[],
-  { status, category, search, currency, cycle }: SubscriptionFilters,
+  {
+    status,
+    category,
+    search,
+    currency,
+    cycle,
+    renewalWindow = "all",
+  }: SubscriptionFilters,
+  today = todayInManila(),
 ): Subscription[] {
   const query = search.trim().toLowerCase();
-  return subscriptions.filter(
-    (item) =>
+  const end =
+    renewalWindow === "all" ? null : addDays(today, Number(renewalWindow));
+  return subscriptions.filter((item) => {
+    const matches =
       (status === "all" || item.status === status) &&
       (!category || item.category === category) &&
       (!currency || item.currency === currency) &&
       (!cycle || item.cycle === cycle) &&
       (item.name.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query)),
-  );
+        item.category.toLowerCase().includes(query));
+    if (!matches) return false;
+    if (!end) return true;
+    const renewal = nextRenewalDate(item, today);
+    return renewal !== null && renewal >= today && renewal < end;
+  });
 }

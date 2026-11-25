@@ -27,6 +27,8 @@ Use **Plan currency** to filter records by their original currency. It combines 
 
 Use **Billing cycle** to show monthly or yearly plans. It combines with all other list filters and resets to **All cycles** when you clear filters or add a subscription.
 
+Use **Renewal due** to show plans with an estimated charge in the next 7 or 30 Manila calendar days, including today and excluding the day at the end of the window. It projects recurring schedules from saved dates and includes upcoming trial conversions. Cancelled plans and expired trials do not match a renewal window. This filter combines with the others, affects **Export shown**, and resets to **Any time** with **Clear filters**.
+
 Search matches service names and categories, ignores letter case, and trims surrounding spaces.
 
 Use **Sort by** to show plans in their original order, alphabetically by service name, or by saved billing date (earliest first). Saved dates are schedule anchors, not projected renewal dates. Sorting applies to the displayed list; CSV export keeps the original record order.
