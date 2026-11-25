@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cloudConfigError, cloudSession } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
-import { subscriptionsCsv } from "./subscriptions-csv";
+import { subscriptionsCsv, upcomingChargesCsv } from "./subscriptions-csv";
 import {
   filterSubscriptions,
   sortSubscriptions,
@@ -244,13 +244,20 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
     records: readonly Subscription[],
     filtered = false,
   ) {
-    const csv = new Blob([subscriptionsCsv(records)], {
+    downloadCsv(
+      subscriptionsCsv(records),
+      `subscriptions-${filtered ? "filtered-" : ""}${todayInManila()}.csv`,
+    );
+  }
+
+  function downloadCsv(contents: string, filename: string) {
+    const csv = new Blob([contents], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(csv);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `subscriptions-${filtered ? "filtered-" : ""}${todayInManila()}.csv`;
+    link.download = filename;
     document.body.append(link);
     link.click();
     link.remove();
@@ -695,7 +702,23 @@ function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
           >
             <div className="section-heading">
               <h2 id="upcoming-heading">Coming up</h2>
-              <span className="count-label">{currency}</span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="count-label">{currency}</span>
+                <button
+                  type="button"
+                  className="row-button disabled:opacity-50"
+                  aria-label="Export projected charges as CSV"
+                  disabled={upcoming.length === 0 || saving}
+                  onClick={() =>
+                    downloadCsv(
+                      upcomingChargesCsv(upcoming),
+                      `charges-${currency}-${today}.csv`,
+                    )
+                  }
+                >
+                  Export forecast
+                </button>
+              </div>
             </div>
             <div className="upcoming-list" id="upcoming-charges">
               {displayedCharges.map(({ subscription: item, date }) => (

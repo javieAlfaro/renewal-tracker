@@ -94,7 +94,7 @@ function billingDate(anchor: Date, monthsAfterAnchor: number): string {
   return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
 }
 
-interface UpcomingCharge {
+export interface UpcomingCharge {
   subscription: Subscription;
   date: string;
 }

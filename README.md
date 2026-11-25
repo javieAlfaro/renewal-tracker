@@ -17,11 +17,13 @@ Monthly equivalents include active plans. The 30-day forecast projects active mo
 
 Subscription prices accept plain decimal amounts from 0 to 99,999,999 with up to two decimal places. The form converts decimal digits directly to minor units and rejects fractional cents or exponent notation rather than rounding the submitted price.
 
-Use **Export CSV** in the subscriptions list to download a copy of all loaded records, including cancelled plans. Search and status filters only affect the on-screen list. The export includes the amount in each plan's original currency.
+Use **Export CSV** in the subscriptions list to download a copy of all loaded records, including cancelled plans. This full export ignores the list filters and includes the amount in each plan's original currency.
 
 Use **Export shown** to download only the records matching every list filter, in the selected sort order. Its filename includes `filtered` to distinguish it from the full export. Both exports preserve original currencies and saved billing dates, even when the list displays projected renewals. **Export shown** is disabled when no records match.
 
-The category filter combines with search and status filters. It includes categories from your saved records. CSV export continues to include the full list regardless of the selected filters.
+Use **Export forecast** in **Coming up** to download all estimated charges in the next 30 days for the **Show totals in** currency, including rows hidden by **Show fewer charges**. The CSV uses projected charge dates, identifies trial conversions, and includes each recurring charge separately. List filters do not affect this forecast export. Its filename includes the currency and forecast start date; the button is disabled for an empty forecast.
+
+The category filter combines with search and status filters. It includes categories from your saved records. **Export CSV** continues to include the full list regardless of the selected filters.
 
 Use **Plan currency** to filter records by their original currency. It combines with the other list filters. **Clear filters** restores all currencies. This control is independent of **Show totals in**, which selects the summary and forecast currency.
 
@@ -31,7 +33,7 @@ Use **Renewal due** to show plans with an estimated charge in the next 7 or 30 M
 
 Search matches service names and categories, ignores letter case, and trims surrounding spaces.
 
-Use **Sort by** to show plans in their original order, alphabetically by service name, or by saved billing date (earliest first). Saved dates are schedule anchors, not projected renewal dates. Sorting applies to the displayed list; CSV export keeps the original record order.
+Use **Sort by** to show plans in their original order, alphabetically by service name, or by saved billing date (earliest first). Saved dates are schedule anchors, not projected renewal dates. Sorting applies to the displayed list; **Export CSV** keeps the original record order.
 
 The list shows how many records match the current filters. If nothing matches, use **Clear filters** to restore the full list while keeping your selected sort order.
 
