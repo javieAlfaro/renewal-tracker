@@ -15,6 +15,8 @@ Open `http://localhost:5173`. With no cloud configuration, the preview includes 
 
 Monthly equivalents include active plans. The 30-day forecast projects active monthly and yearly charges from the saved billing date. If a month is shorter, the forecast uses its last day and returns to the original day when possible. Trials appear once at their saved end date if it falls inside the window. Forecast dates are estimates and leave saved records intact. Dates use Asia/Manila and totals never combine currencies.
 
+Subscription prices accept plain decimal amounts from 0 to 99,999,999 with up to two decimal places. The form converts decimal digits directly to minor units and rejects fractional cents or exponent notation rather than rounding the submitted price.
+
 Use **Export CSV** in the subscriptions list to download a copy of all loaded records, including cancelled plans. Search and status filters only affect the on-screen list. The export includes the amount in each plan's original currency.
 
 Use **Export shown** to download only the records matching every list filter, in the selected sort order. Its filename includes `filtered` to distinguish it from the full export. Both exports preserve original currencies and saved billing dates, even when the list displays projected renewals. **Export shown** is disabled when no records match.

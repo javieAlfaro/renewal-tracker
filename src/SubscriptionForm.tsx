@@ -8,6 +8,7 @@ import {
   type SubscriptionStatus,
 } from "./subscriptions";
 import type { SubscriptionDetails } from "./subscriptions-api";
+import { parseAmountMinor } from "./subscription-amount";
 
 const categories = [
   "Entertainment",
@@ -47,9 +48,15 @@ export function SubscriptionForm({
     if (saving) return;
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name")).trim();
-    const amountMinor = Math.round(Number(data.get("amount")) * 100);
-    if (!name || !Number.isSafeInteger(amountMinor) || amountMinor < 0) {
-      setError("Enter a name and a valid amount.");
+    const amountMinor = parseAmountMinor(String(data.get("amount") ?? ""));
+    if (!name) {
+      setError("Enter a service name.");
+      return;
+    }
+    if (amountMinor === null) {
+      setError(
+        "Enter an amount from 0 to 99,999,999 with up to two decimal places.",
+      );
       return;
     }
     setError("");
