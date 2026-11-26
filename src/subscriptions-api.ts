@@ -66,14 +66,18 @@ export function subscriptionApi(
   const endpoint = new URL("subscriptions", `${baseUrl.replace(/\/+$/, "")}/`);
 
   async function request(url: URL, options: RequestInit, message: string) {
+    options.signal?.throwIfAborted();
     const headers = new Headers(options.headers);
-    headers.set("Authorization", `Bearer ${await accessToken()}`);
+    const token = await accessToken();
+    options.signal?.throwIfAborted();
+    headers.set("Authorization", `Bearer ${token}`);
     const response = await fetch(url, {
       ...options,
       headers,
       redirect: "error",
       cache: "no-store",
     });
+    options.signal?.throwIfAborted();
     if (response.status === 401) {
       throw new Error("Your session has expired. Sign out and sign in again.");
     }
@@ -122,6 +126,7 @@ export function subscriptionApi(
         const message =
           "The service returned an invalid subscription list. Reload and try again.";
         const page = await readJson(response, message);
+        signal.throwIfAborted();
         if (
           !isObject(page) ||
           !Array.isArray(page.subscriptions) ||

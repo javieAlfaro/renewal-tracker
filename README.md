@@ -75,6 +75,8 @@ The stack defines Cognito Lite with email verification and the classic hosted UI
 
 The browser validates cloud response shapes, record fields, calendar dates, and pagination cursors before using them. An invalid page rejects the entire load. If a save response is invalid, reload the list before retrying because the server may already have saved the change.
 
+Subscription loads honor cancellation before authentication, after token retrieval, and after response reading. A cancelled load returns no records and does not start another page request.
+
 The Lambda role has read, `PutItem`, and `UpdateItem` access to the table. API requests have a configured throttle, logs expire after seven days, and the table and user pool are retained when the stack is removed. Retained resources can continue to incur costs and require deliberate cleanup through AWS. CDK bootstrapping also creates deployment asset storage.
 
 ## Deploy and verify

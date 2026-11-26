@@ -226,3 +226,90 @@ it("reports invalid JSON and malformed save responses with recovery guidance", a
     );
   }
 });
+
+it("skips authentication and network work when the load is already cancelled", async (t) => {
+  const controller = new AbortController();
+  const reason = new DOMException("Load cancelled", "AbortError");
+  controller.abort(reason);
+  let tokenCalls = 0;
+  const fetch = t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("Unexpected request");
+  });
+  const api = subscriptionApi("https://api.example.test", async () => {
+    tokenCalls += 1;
+    return "token";
+  });
+  await assert.rejects(
+    api.list(controller.signal),
+    (error) => error === reason,
+  );
+  assert.equal(tokenCalls, 0);
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
+it("does not send a request if cancellation happens while obtaining a token", async (t) => {
+  const controller = new AbortController();
+  let releaseToken!: (token: string) => void;
+  const token = new Promise<string>((resolve) => {
+    releaseToken = resolve;
+  });
+  const fetch = t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("Unexpected request");
+  });
+  const api = subscriptionApi("https://api.example.test", () => token);
+  const result = api.list(controller.signal);
+  controller.abort();
+  releaseToken("token");
+  await assert.rejects(result, { name: "AbortError" });
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
+it("rejects an aborted load after fetch even if the transport returns a response", async (t) => {
+  const controller = new AbortController();
+  const fetch = t.mock.method(globalThis, "fetch", async () => {
+    controller.abort();
+    return Response.json({ subscriptions: [record], nextCursor: "next" });
+  });
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  await assert.rejects(api.list(controller.signal), { name: "AbortError" });
+  assert.equal(fetch.mock.callCount(), 1);
+});
+
+it("does not return records or request another page after cancellation while reading JSON", async (t) => {
+  const controller = new AbortController();
+  let started!: () => void;
+  const reading = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let releaseBody!: (body: unknown) => void;
+  const body = new Promise<unknown>((resolve) => {
+    releaseBody = resolve;
+  });
+  const response = Response.json({});
+  t.mock.method(response, "json", async () => {
+    started();
+    return body;
+  });
+  const fetch = t.mock.method(globalThis, "fetch", async () => response);
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  const result = api.list(controller.signal);
+  await reading;
+  controller.abort();
+  releaseBody({ subscriptions: [record], nextCursor: "next" });
+  await assert.rejects(result, { name: "AbortError" });
+  assert.equal(fetch.mock.callCount(), 1);
+});
+
+it("preserves AbortError raised while reading a response body", async (t) => {
+  const reason = new DOMException("Read cancelled", "AbortError");
+  const response = Response.json({});
+  t.mock.method(response, "json", async () => {
+    throw reason;
+  });
+  t.mock.method(globalThis, "fetch", async () => response);
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  await assert.rejects(
+    api.list(new AbortController().signal),
+    (error) => error === reason,
+  );
+});
