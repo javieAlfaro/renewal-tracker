@@ -175,7 +175,27 @@ export async function handler(
       }),
     );
     return json(200, {
-      subscriptions: result.Items ?? [],
+      subscriptions: (result.Items ?? []).map(
+        ({
+          id,
+          name,
+          category,
+          amountMinor,
+          currency,
+          cycle,
+          nextChargeDate,
+          status,
+        }) => ({
+          id,
+          name,
+          category,
+          amountMinor,
+          currency,
+          cycle,
+          nextChargeDate,
+          status,
+        }),
+      ),
       nextCursor: result.LastEvaluatedKey?.id ?? null,
     });
   } catch (error) {

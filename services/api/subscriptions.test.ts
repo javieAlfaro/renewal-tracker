@@ -85,6 +85,61 @@ const details = {
   status: "active",
 };
 
+it("lists only public fields without exposing ownership or internal database metadata", async (t) => {
+  const subscription = { ...details, name: "Sample Plan", id: "record-id" };
+  const stored = [
+    {
+      ...subscription,
+      ownerId: "real-user",
+      internalNotes: "private metadata",
+      createdAt: "2026-11-26",
+    },
+    {
+      ...subscription,
+      id: "second-id",
+      currency: "EUR",
+      status: "cancelled",
+      ownerId: "real-user",
+      futureInternalField: { secret: true },
+    },
+  ];
+  const original = structuredClone(stored);
+  t.mock.method(DynamoDBDocumentClient.prototype, "send", async () => ({
+    Items: stored,
+    LastEvaluatedKey: { ownerId: "real-user", id: "second-id" },
+  }));
+  const event = createEvent("");
+  event.requestContext.http.method = "GET";
+  const response = await handler(event);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers?.["Cache-Control"], "no-store");
+  assert.deepEqual(JSON.parse(response.body!), {
+    subscriptions: [
+      subscription,
+      {
+        ...subscription,
+        id: "second-id",
+        currency: "EUR",
+        status: "cancelled",
+      },
+    ],
+    nextCursor: "second-id",
+  });
+  assert.deepEqual(stored, original);
+});
+
+it("returns an empty public list when DynamoDB has no items", async (t) => {
+  t.mock.method(DynamoDBDocumentClient.prototype, "send", async () => ({}));
+  const event = createEvent("");
+  event.requestContext.http.method = "GET";
+  const response = await handler(event);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body!), {
+    subscriptions: [],
+    nextCursor: null,
+  });
+});
+
 function createEvent(body: string): APIGatewayProxyEventV2WithJWTAuthorizer {
   return {
     body,
