@@ -143,3 +143,86 @@ it("reports a missing subscription when an edit returns 404", async (t) => {
     /subscription is unavailable/,
   );
 });
+
+it("rejects malformed pages and records before returning a list", async (t) => {
+  let body: unknown;
+  t.mock.method(globalThis, "fetch", async () => Response.json(body));
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  for (body of [
+    null,
+    [],
+    {},
+    { subscriptions: [], nextCursor: 12 },
+    { subscriptions: [], nextCursor: " " },
+    { subscriptions: "invalid", nextCursor: null },
+    ...[
+      null,
+      {},
+      { ...record, id: "" },
+      { ...record, name: " " },
+      { ...record, category: [] },
+      { ...record, amountMinor: 1.5 },
+      { ...record, amountMinor: -1 },
+      { ...record, amountMinor: 10_000_000_000 },
+      { ...record, currency: "JPY" },
+      { ...record, cycle: "weekly" },
+      { ...record, status: "unknown" },
+      { ...record, nextChargeDate: "2027-02-29" },
+      { ...record, nextChargeDate: "2101-01-01" },
+    ].map((subscription) => ({
+      subscriptions: [subscription],
+      nextCursor: null,
+    })),
+  ]) {
+    await assert.rejects(
+      api.list(new AbortController().signal),
+      /invalid subscription list/,
+    );
+  }
+});
+
+it("rejects malformed later pages instead of returning a partial list", async (t) => {
+  let page = 0;
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json(
+      ++page === 1
+        ? { subscriptions: [record], nextCursor: "next" }
+        : {
+            subscriptions: [{ ...record, nextChargeDate: "not-a-date" }],
+            nextCursor: null,
+          },
+    ),
+  );
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  await assert.rejects(
+    api.list(new AbortController().signal),
+    /invalid subscription list/,
+  );
+  assert.equal(page, 2);
+});
+
+it("reports invalid JSON and malformed save responses with recovery guidance", async (t) => {
+  let response = new Response("not json", { status: 200 });
+  t.mock.method(globalThis, "fetch", async () => response.clone());
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  await assert.rejects(
+    api.list(new AbortController().signal),
+    /invalid subscription list/,
+  );
+  await assert.rejects(
+    api.create(details),
+    /Reload your list before trying again/,
+  );
+  for (const body of [
+    null,
+    {},
+    { subscription: { ...record, amountMinor: "12550" } },
+  ]) {
+    response = Response.json(body);
+    await assert.rejects(api.create(details), /invalid save response/);
+    await assert.rejects(
+      api.update(record.id, details),
+      /invalid save response/,
+    );
+  }
+});
