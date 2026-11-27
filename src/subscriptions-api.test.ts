@@ -96,8 +96,12 @@ it("sends edited details and cancellation status to the individual subscription 
 });
 
 it("stops a repeating pagination cursor instead of requesting pages indefinitely", async (t) => {
+  let page = 0;
   const fetch = t.mock.method(globalThis, "fetch", async () =>
-    Response.json({ subscriptions: [record], nextCursor: "same-cursor" }),
+    Response.json({
+      subscriptions: [{ ...record, id: `page-${++page}` }],
+      nextCursor: "same-cursor",
+    }),
   );
   const api = subscriptionApi(
     "https://api.example.test",
@@ -108,6 +112,47 @@ it("stops a repeating pagination cursor instead of requesting pages indefinitely
     /complete subscription list/,
   );
   assert.equal(fetch.mock.callCount(), 2);
+});
+
+it("rejects duplicate IDs within a page even when the record details differ", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async () =>
+    Response.json({
+      subscriptions: [record, { ...record, amountMinor: 999 }],
+      nextCursor: "another-page",
+    }),
+  );
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  await assert.rejects(
+    api.list(new AbortController().signal),
+    /duplicate subscription records/,
+  );
+  assert.equal(fetch.mock.callCount(), 1);
+});
+
+it("rejects duplicates across pages rather than returning double-counted totals", async (t) => {
+  let page = 0;
+  const fetch = t.mock.method(globalThis, "fetch", async () =>
+    Response.json({
+      subscriptions: [record],
+      nextCursor: ++page === 1 ? "next-page" : "third-page",
+    }),
+  );
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  await assert.rejects(
+    api.list(new AbortController().signal),
+    /duplicate subscription records/,
+  );
+  assert.equal(fetch.mock.callCount(), 2);
+});
+
+it("accepts identical service names with distinct IDs and resets duplicate tracking for each load", async (t) => {
+  const records = [record, { ...record, id: "second-id" }];
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json({ subscriptions: records, nextCursor: null }),
+  );
+  const api = subscriptionApi("https://api.example.test", async () => "token");
+  assert.deepEqual(await api.list(new AbortController().signal), records);
+  assert.deepEqual(await api.list(new AbortController().signal), records);
 });
 
 it("rejects the entire list when a later page fails", async (t) => {

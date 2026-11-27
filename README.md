@@ -75,7 +75,7 @@ The stack defines Cognito Lite with email verification and the classic hosted UI
 
 `PUT /subscriptions/{id}` updates an existing subscription using the same fields. It also accepts `cancelled` as a status. On success it returns `200` with the updated subscription. A missing record in the signed-in user's partition returns `404`.
 
-The browser validates cloud response shapes, record fields, calendar dates, and pagination cursors before using them. An invalid page rejects the entire load. If a save response is invalid, reload the list before retrying because the server may already have saved the change.
+The browser validates cloud response shapes, record fields, calendar dates, and pagination cursors before using them. An invalid page or repeated subscription ID rejects the entire load, preventing duplicate rows and double-counted totals. Different subscriptions may still share the same service name. If a save response is invalid, reload the list before retrying because the server may already have saved the change.
 
 Subscription loads honor cancellation before authentication, after token retrieval, and after response reading. A cancelled load returns no records and does not start another page request.
 

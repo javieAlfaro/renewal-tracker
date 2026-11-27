@@ -117,6 +117,7 @@ export function subscriptionApi(
       const subscriptions: Subscription[] = [];
       const url = new URL(endpoint);
       const seen = new Set<string>();
+      const recordIds = new Set<string>();
       do {
         const response = await request(
           url,
@@ -138,7 +139,15 @@ export function subscriptionApi(
           )
         )
           throw new Error(message);
-        subscriptions.push(...page.subscriptions);
+        for (const subscription of page.subscriptions) {
+          if (recordIds.has(subscription.id)) {
+            throw new Error(
+              "The service returned duplicate subscription records. Reload and try again.",
+            );
+          }
+          recordIds.add(subscription.id);
+          subscriptions.push(subscription);
+        }
         if (!page.nextCursor) return subscriptions;
         if (seen.has(page.nextCursor))
           throw new Error("Could not load the complete subscription list.");
