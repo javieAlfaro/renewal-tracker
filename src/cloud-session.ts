@@ -1,6 +1,7 @@
 import { UserManager, WebStorageStateStore, type User } from "oidc-client-ts";
 import { readCloudConfig } from "./cloud-config";
 import { subscriptionApi } from "./subscriptions-api";
+import { createSessionInitializer } from "./session-initializer";
 
 const config = readCloudConfig(import.meta.env);
 const returnUrl = `${window.location.origin}/`;
@@ -24,27 +25,24 @@ function createCloudSession() {
     loadUserInfo: false,
   });
   let refresh: Promise<User | null> | undefined;
-  let initialSession: Promise<User | null> | undefined;
+  const initialize = createSessionInitializer(async () => {
+    const url = new URL(window.location.href);
+    if (
+      url.searchParams.has("state") &&
+      (url.searchParams.has("code") || url.searchParams.has("error"))
+    ) {
+      try {
+        return await manager.signinRedirectCallback();
+      } finally {
+        window.history.replaceState(null, "", returnUrl);
+      }
+    }
+    const user = await manager.getUser();
+    return user?.expired && !user.refresh_token ? null : user;
+  });
 
   return {
-    initialize() {
-      initialSession ??= (async () => {
-        const url = new URL(window.location.href);
-        if (
-          url.searchParams.has("state") &&
-          (url.searchParams.has("code") || url.searchParams.has("error"))
-        ) {
-          try {
-            return await manager.signinRedirectCallback();
-          } finally {
-            window.history.replaceState(null, "", returnUrl);
-          }
-        }
-        const user = await manager.getUser();
-        return user?.expired && !user.refresh_token ? null : user;
-      })();
-      return initialSession;
-    },
+    initialize,
     signIn: () => manager.signinRedirect(),
     async signOut() {
       await manager.removeUser();

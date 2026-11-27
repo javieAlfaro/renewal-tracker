@@ -133,7 +133,7 @@ function CloudDashboard({
         }}
       />
     );
-  if (signedIn && error) {
+  if (error) {
     return (
       <CloudScreen
         title="Could not load subscriptions"
@@ -145,15 +145,18 @@ function CloudDashboard({
             setAttempt((value) => value + 1);
           },
         }}
-        secondary={{ label: "Sign out", run: () => redirect(session.signOut) }}
+        secondary={{
+          label: signedIn ? "Sign out" : "Sign in",
+          run: () => redirect(signedIn ? session.signOut : session.signIn),
+        }}
       />
     );
   }
-  if (signedIn === false || error) {
+  if (signedIn === false) {
     return (
       <CloudScreen
         title="Renewal Tracker"
-        message={error || "Sign in to view and manage your subscriptions."}
+        message="Sign in to view and manage your subscriptions."
         action={{ label: "Sign in", run: () => redirect(session.signIn) }}
       />
     );

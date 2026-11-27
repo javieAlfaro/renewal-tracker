@@ -113,6 +113,8 @@ Copy [.env.example](.env.example) to `.env.local` for local testing or set these
 
 Restart Vite or rebuild the Vercel site after setting the values. Cloud mode uses Cognito to sign in and stores the session in the current browser tab.
 
+If session initialization fails, **Try again** starts a fresh initialization attempt. Concurrent callers share one attempt, and successful results (including a signed-out session) stay cached. The error screen also offers **Sign in** or **Sign out** as appropriate.
+
 1. Open the frontend at the configured origin. Sign up with a test email, verify it, and sign in.
 2. Add a subscription, edit its price, and reload. Confirm the edited price persists. Mark the subscription cancelled and check that it drops out of the forecast.
 3. Sign in as a second test account in a separate browser profile. Confirm the first account's subscription is absent.
