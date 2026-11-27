@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cloudConfigError, cloudSession } from "./cloud-session";
 import { SubscriptionForm } from "./SubscriptionForm";
+import { watchManilaDate } from "./manila-clock";
 import { subscriptionsCsv, upcomingChargesCsv } from "./subscriptions-csv";
 import {
   filterSubscriptions,
@@ -173,7 +174,8 @@ interface CloudDashboardData {
 }
 
 function Dashboard({ cloud }: { cloud?: CloudDashboardData }) {
-  const [today] = useState(() => todayInManila());
+  const [today, setToday] = useState(() => todayInManila());
+  useEffect(() => watchManilaDate(setToday), []);
   const [subscriptions, setSubscriptions] = useState(
     () => cloud?.records ?? createDemoSubscriptions(today),
   );
